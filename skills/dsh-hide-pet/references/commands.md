@@ -6,12 +6,16 @@
 dsh-hide-pet list
 dsh-hide-pet select <id>
 dsh-hide-pet update <id> --name <名称> --description <描述>
+dsh-hide-pet replace <id> --file <新图集路径>
 dsh-hide-pet delete <id>
 dsh-hide-pet validate --file <图集路径>
 dsh-hide-pet import <宠物包目录或ZIP>
 dsh-hide-pet export <id> <新ZIP文件路径>
 dsh-hide-pet preferences --visible true --scale 0.72 --reduced-motion false
 dsh-hide-pet preferences --follow-pointer true
+dsh-hide-pet preferences --mode mini --visibility-behavior on-demand
+dsh-hide-pet reset --scope size
+dsh-hide-pet reset --scope position
 dsh-hide-pet preview <id>
 dsh-hide-pet preview --file <图集路径> --port 5058
 ```
@@ -39,6 +43,10 @@ dsh-hide-pet preview --file <图集路径> --port 5058
 
 图集路径为包内文件名，不能指向包外。名称不超过 64 字，描述不超过 500 字。图集要求见 [atlas.md](atlas.md)。
 
-导入时会校验图集并创建新的稳定 ID，不能用包里的旧 ID 直接覆盖现有宠物。导入不会自动选择；要启用时继续调用 `select`。替换画面时先导出原宠物，将新图集作为新宠物导入并预览，再按用户意图选择新 ID、删除旧自定义项。不要擅自删除旧宠物。
+也支持 Codex 清单的 `displayName`、`spriteVersionNumber`、`spritesheetPath`，以及旧版 `avatar.json`。Codex 清单缺少版本时按 v1，缺少图集路径时按 `spritesheet.webp`；本项目 `name` 清单默认 `spritesheet.png`。导出包含两种字段别名。
+
+导入时会校验图集并创建新的稳定 ID，不能用包里的旧 ID 直接覆盖现有宠物。导入不会自动选择；要启用时继续调用 `select`，选中时会退出精简模式。替换现有自定义图集前先导出备份，再使用 `replace`，可从 v1 升级为 v2，原 ID、名称、描述及全部显示偏好保持不变。校验失败不改变已安装图集。内置图集不可替换。
+
+`reset --scope size|position|all` 分别重置大小、位置或全部显示偏好；只有 `all` 会恢复默认选择。`visibilityBehavior` 为 `always` 或 `on-demand`，后者在点击伙伴和设置窗口以外区域时收起；`visible` 控制整个伙伴，`mode` 为 `pet` 或 `mini`。界面管理入口是“设置 → 宠物伙伴”，应用内 Ctrl+Alt+P 唤出聊天（macOS 对应主修饰键+Option+P）。
 
 读取命令返回的实际 ID、偏好和输出路径后再报告成功。导出包含角色元数据和图集，可用于本地备份与迁移；目标 ZIP 必须尚不存在，命令不会覆盖原文件。不包含云端账户或跨设备同步服务。

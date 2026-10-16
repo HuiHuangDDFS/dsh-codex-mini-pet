@@ -15,7 +15,7 @@ test('animation frames stay in occupied cells and v1 has no gaze rows', () => {
   for (let row = 0; row < ANIMATIONS.length; row++) {
     const animation = ANIMATIONS[row];
     for (let time = 0; time < 4000; time += 71) {
-      const frame = frameFor(animation.id, time);
+      const frame = frameFor(animation.id, time, { loop: true });
       assert.equal(frame.row, row);
       assert.ok(frame.column >= 0 && frame.column < animation.count);
     }
@@ -23,6 +23,16 @@ test('animation frames stay in occupied cells and v1 has no gaze rows', () => {
   assert.deepEqual(frameFor('jumping', 500, { reducedMotion: true }), { row: 4, column: 0, rows: 11 });
   assert.equal(frameFor('idle', 500, { gaze: 12, version: 1 }).rows, 9);
   assert.ok(frameFor('idle', 500, { gaze: 12, version: 1 }).row < 9);
+});
+
+test('playback uses slow idle, three transient cycles and accessible static poses', () => {
+  assert.equal(frameFor('idle', 1679).column, 0);
+  assert.equal(frameFor('idle', 1680).column, 1);
+  assert.equal(frameFor('waving', 2099).row, 3);
+  assert.equal(frameFor('waving', 2100).row, 0);
+  assert.equal(frameFor('waving', 2100, { loop: true }).row, 3);
+  assert.deepEqual(frameFor('running', 10, { reducedMotion: true, gaze: 8 }), { row: 7, column: 0, rows: 11 });
+  assert.equal(frameFor('waiting', 10, { gaze: 8 }).row, 6);
 });
 
 test('drag positions remain reachable after shrinking the window', () => {
@@ -33,10 +43,10 @@ test('drag positions remain reachable after shrinking the window', () => {
 test('task states follow active-session facts and never infer failure from inactivity', () => {
   const sessions = { byId: { a: { id: 'a', title: 'Current', running: true, retainedBy: { mainView: 1 } }, b: { id: 'b', running: true, retainedBy: {} } } };
   assert.equal(taskPresentation(sessions, new Map()).animation, 'running');
-  assert.equal(taskPresentation(sessions, new Map([['a', { running: true, pendingInteraction: { kind: 'approval' } }]])).animation, 'review');
+  assert.equal(taskPresentation(sessions, new Map([['a', { running: true, pendingInteraction: { kind: 'approval' } }]])).animation, 'waiting');
   assert.equal(taskPresentation(sessions, new Map([['a', { running: true, pendingInteraction: { kind: 'question' } }]])).animation, 'waiting');
   assert.equal(taskPresentation({ byId: {} }, new Map()).animation, 'idle');
-  assert.equal(taskPresentation({ byId: {} }, new Map([['b', { completionUnread: true }]])).animation, 'waving');
+  assert.equal(taskPresentation({ byId: {} }, new Map([['b', { completionUnread: true }]])).animation, 'review');
 });
 
 test('a native agent error produces failed while a retry or cleared error restores the current state', () => {
@@ -44,7 +54,7 @@ test('a native agent error produces failed while a retry or cleared error restor
   assert.equal(taskPresentation(sessions, new Map(), { lastAgentError: 'Native model failure' }).animation, 'failed');
   assert.equal(taskPresentation(sessions, new Map([['a', { running: true }]]), { lastAgentError: 'Previous failure' }).animation, 'running');
   assert.equal(taskPresentation(sessions, new Map(), { lastAgentError: null }).animation, 'idle');
-  assert.equal(taskPresentation(sessions, new Map([['a', { pendingInteraction: { kind: 'approval' } }]]), { lastAgentError: 'Previous failure' }).animation, 'review');
+  assert.equal(taskPresentation(sessions, new Map([['a', { pendingInteraction: { kind: 'approval' } }]]), { lastAgentError: 'Previous failure' }).animation, 'waiting');
   assert.equal(taskPresentation({ byId: {} }, new Map(), { lastAgentError: 'Unrelated error' }).animation, 'idle');
 });
 

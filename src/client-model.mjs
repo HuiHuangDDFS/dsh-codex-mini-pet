@@ -29,29 +29,75 @@ export function gazeForPoint(point, center, deadZone = 30) {
   return Math.round(angle / 22.5) % 16;
 }
 
-export function frameFor(animation, elapsedMs, { reducedMotion = false, gaze = null, version = 2 } = {}) {
-  if (version === 2 && Number.isInteger(gaze) && gaze >= 0 && gaze < 16) {
+export const FRAME_TIMES = Object.freeze({
+  idle: [1680, 660, 660, 840, 840, 1920],
+  'running-right': [120, 120, 120, 120, 120, 120, 120, 220],
+  'running-left': [120, 120, 120, 120, 120, 120, 120, 220],
+  waving: [140, 140, 140, 280], jumping: [140, 140, 140, 140, 280],
+  failed: [140, 140, 140, 140, 140, 140, 140, 240],
+  waiting: [150, 150, 150, 150, 150, 260],
+  running: [120, 120, 120, 120, 120, 220],
+  review: [150, 150, 150, 150, 150, 280],
+});
+
+export function frameFor(animation, elapsedMs, { reducedMotion = false, gaze = null, version = 2, loop = false } = {}) {
+  if (!reducedMotion && ['idle', 'running', 'waving'].includes(animation) && version === 2 && Number.isInteger(gaze) && gaze >= 0 && gaze < 16) {
     return { row: 9 + Math.floor(gaze / 8), column: gaze % 8, rows: 11 };
   }
-  const row = Math.max(0, ANIMATIONS.findIndex(item => item.id === animation));
-  const spec = ANIMATIONS[row];
-  return { row, column: reducedMotion ? 0 : Math.floor(elapsedMs * spec.fps / 1000) % spec.count, rows: version === 1 ? 9 : 11 };
+  let row = Math.max(0, ANIMATIONS.findIndex(item => item.id === animation));
+  if (reducedMotion) return { row, column: 0, rows: version === 1 ? 9 : 11 };
+  let times = FRAME_TIMES[ANIMATIONS[row].id];
+  let duration = times.reduce((a, b) => a + b, 0);
+  let time = Math.max(0, elapsedMs);
+  if (!loop && row !== 0 && time >= duration * 3) {
+    time -= duration * 3; row = 0; times = FRAME_TIMES.idle;
+    duration = times.reduce((a, b) => a + b, 0);
+  }
+  time %= duration;
+  let column = 0;
+  while (column < times.length - 1 && time >= times[column]) time -= times[column++];
+  return { row, column: reducedMotion ? 0 : column, rows: version === 1 ? 9 : 11 };
 }
 
-/** Only use facts exposed by the Host. In particular, idle is not evidence of failure. */
-export function taskPresentation(sessions, statuses, sessionSnapshot = null) {
-  const rows = Object.values(sessions?.byId || {});
-  const active = rows.find(row => (row.retainedBy?.mainView || 0) > 0);
-  const status = active ? statuses?.get?.(active.id) : undefined;
-  const pending = status?.pendingInteraction;
-  if (pending) {
-    const approval = /approv|review|permission/.test(String(pending.kind || pending.type || ''));
-    return { animation: approval ? 'review' : 'waiting', label: approval ? '等待你的确认' : '等待你的回应', title: active.title || '当前对话', sessionId: active.id };
-  }
-  if (status?.running || active?.running) return { animation: 'running', label: '正在陪你工作', title: active.title || '当前对话', sessionId: active.id };
-  if (active && sessionSnapshot?.lastAgentError) return { animation: 'failed', label: '遇到了一点问题', title: active.title || '当前对话', sessionId: active.id };
-  if ([...(statuses?.values?.() || [])].some(item => item.completionUnread)) return { animation: 'waving', label: '有任务完成啦', title: active?.title || '任务提醒', sessionId: active?.id };
-  return { animation: 'idle', label: '随时准备好', title: active?.title || '你的工作伙伴', sessionId: active?.id };
+export const ACTIVITY_STATES = Object.freeze({
+  'needs-input': { priority: 0, animation: 'waiting', label: '需要你的回应' },
+  blocked: { priority: 1, animation: 'failed', label: '遇到了一点问题' },
+  ready: { priority: 2, animation: 'review', label: '已完成，待查看' },
+  running: { priority: 3, animation: 'running', label: '正在工作' },
+  idle: { priority: 4, animation: 'idle', label: '随时准备好' },
+});
+
+export function activeSessionId(sessions) {
+  return Object.values(sessions?.byId || {}).find(row => (row.retainedBy?.mainView || 0) > 0)?.id;
+}
+
+/** Only Host facts determine activity. An idle session is not a failed session. */
+export function activityRows(sessions, statuses, snapshots = new Map(), { includeIdle = false } = {}) {
+  const byId = sessions?.byId || {};
+  const ids = new Set([...Object.keys(byId), ...(statuses?.keys?.() || [])]);
+  return [...ids].map(id => {
+    const row = byId[id] || { id }, status = statuses?.get?.(id) || {};
+    const snapshot = snapshots?.get?.(id);
+    const pending = status.pendingInteraction;
+    const error = snapshot?.lastTurnError || snapshot?.lastAgentError || snapshot?.openError || snapshot?.promptError?.error || null;
+    // Running takes precedence over an error from a previous turn in this same chat.
+    const state = pending ? 'needs-input' : status.running || row.running ? 'running' : error ? 'blocked' : status.completionUnread ? 'ready' : 'idle';
+    const spec = ACTIVITY_STATES[state];
+    const kind = typeof pending === 'string' ? pending : pending?.kind || pending?.type || '';
+    const label = state === 'needs-input' && /approv|review|permission/.test(kind) ? '等待你的确认' : spec.label;
+    return { id, sessionId: id, title: row.displayTitle || row.title || '未命名会话', state, label, animation: spec.animation, priority: spec.priority, active: (row.retainedBy?.mainView || 0) > 0, running: Boolean(status.running || row.running), pendingInteraction: pending || null, error, activityVersion: snapshot?.activityVersion || '', unread: Boolean(status.completionUnread) };
+  }).filter(row => includeIdle || row.state !== 'idle').sort((a, b) => a.priority - b.priority || Number(b.active) - Number(a.active) || a.title.localeCompare(b.title));
+}
+
+/** Codex's documented priority: needs input, blocked, ready, running. */
+export function taskPresentation(sessions, statuses, sessionSnapshot = null, snapshots = null) {
+  const activeId = activeSessionId(sessions);
+  const facts = snapshots || new Map(activeId && sessionSnapshot ? [[activeId, sessionSnapshot]] : []);
+  const activity = activityRows(sessions, statuses, facts);
+  const first = activity[0];
+  if (first) return { ...first, count: activity.length };
+  const active = sessions?.byId?.[activeId];
+  return { state: 'idle', animation: 'idle', label: ACTIVITY_STATES.idle.label, title: active?.displayTitle || active?.title || '你的工作伙伴', sessionId: activeId, count: 0 };
 }
 
 export function resolveAssetUrl(path, baseUri) {

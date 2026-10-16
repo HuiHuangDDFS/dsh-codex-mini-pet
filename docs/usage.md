@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-0.1.0.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-0.2.0.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`，由宿主同步依赖并启用 bundle。桌面 profile 有专用保护，使用上述桌面管理入口。使用打包后的 tgz；本次发现 Windows 宿主包管理器在将源码目录链接替换为安装包时会影响链接目标，因此不要把源码目录作为宿主的链接依赖。
 
@@ -34,9 +34,19 @@ node src/cli.mjs preview
 
 ## 模型工具
 
-宿主公开 `pet_list`、`pet_select`、`pet_update`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`。调用参数以运行中的工具定义为准。示例请求：“列出宠物并选择智域”“把宠物缩小一点”“隐藏宠物”“导出当前宠物到指定 ZIP 文件”。
+宿主公开 `pet_list`、`pet_select`、`pet_update`、`pet_replace`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`、`pet_reset_preferences`。调用参数以运行中的工具定义为准。示例请求：“列出宠物并选择智域”“把宠物缩小一点”“隐藏宠物”“导出当前宠物到指定 ZIP 文件”。
 
-宿主命令为 `/pet`，可使用 `show`、`hide`、`list` 或 `select <id>`；不带参数时切换显示状态。
+宿主命令为 `/pet`，可使用 `show`、`hide`、`mini`、`list`、`select <id>`、`reset [size|position|all]`；不带参数时切换显示状态。
+
+## 原生设置与日常操作
+
+打开 Harness 左下角“设置”，选择左栏“宠物伙伴”（Agent 预设下方）。在此选择形象、导入/导出、替换自定义图集、改名与描述、查看动作和调整偏好。界面没有独立的右下角“伙伴”管理按钮。创建和旧版升级按钮会在当前工作区准备一条主会话草稿，由你发送；需要安装配套 skill。
+
+宠物旁“聊一聊”可在指定工作区新建会话，或向现有会话发送完整文字。含 `@`、技能或命令的草稿用“在主会话编辑”转入原生输入栏，再添加文件和其他上下文。主输入栏已有内容会保留。
+
+“动态”显示多个会话的运行、等待回应、错误和未读完成状态，可打开、回复、停止、收起单条提醒或静音某个会话。需要审批或回答时，“前往处理”打开对应原生会话。静音按浏览器来源保存在本机，可用“恢复提醒”清除。
+
+精简模式仅保留聊天与动态；隐藏会收起整个伙伴。按需显示在点击外部区域时收起。Ctrl+Alt+P 在 Harness 窗口内唤出并聚焦快速聊天；快捷键可由宿主快捷键设置管理。它不是操作系统全局热键。拖动移动形象；方向键微调，Shift 加速，Enter 保存，Esc 还原。
 
 ## skill
 

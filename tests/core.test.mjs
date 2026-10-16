@@ -96,7 +96,47 @@ test('host owns route/tool/command lifetime and uses prefix matching without a t
   const effects = [], tools = new Map(), commands = [], routes = [];
   const ctx = { effect: fn => effects.push(fn()), connection: { admit: () => ({ rejection: 403 }) }, webServer: { register: route => { routes.push(route); return () => routes.pop(); } }, tools: { register: tool => { tools.set(tool.name, tool); return () => tools.delete(tool.name); } }, commands: { register: command => { commands.push(command); return () => commands.pop(); } } };
   apply(ctx, { dataDir: await workspace(t) }); assert.equal(routes[0].path, API_PREFIX); assert.equal('/dsh-hide-pet/api/state'.startsWith(`${routes[0].path}/`), true);
-  assert.equal(tools.size, 8); assert.equal((await commands[0].handler({ rawInput: 'hide' })).kind, 'success');
+  assert.equal(tools.size, 10); assert.ok(tools.has('pet_replace')); assert.ok(tools.has('pet_reset_preferences'));
+  assert.equal((await commands[0].handler({ rawInput: 'hide' })).kind, 'success');
   assert.equal((await tools.get('pet_list').execute({})).preferences.visible, false);
   for (const dispose of effects.reverse()) dispose(); assert.equal(tools.size, 0); assert.equal(routes.length, 0); assert.equal(commands.length, 0);
+});
+
+test('Codex default WebP and legacy avatar manifests round-trip with display aliases', async t => {
+  const directory = await workspace(t), store = new PetStore(path.join(directory, 'data'));
+  const bytes = await sharp(await atlas(1)).webp({ lossless: true }).toBuffer();
+  const manifest = { displayName: 'Codex 旧版伙伴', description: '保留描述' };
+  const archive = zipSync({ 'legacy/avatar.json': strToU8(JSON.stringify(manifest)), 'legacy/spritesheet.webp': bytes });
+  const { pet } = await store.importArchive(archive);
+  assert.equal(pet.name, manifest.displayName); assert.equal(pet.spriteVersion, 1);
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const exported = unzipSync(await store.export(pet.id));
+  const saved = JSON.parse(strFromU8(exported['pet.json']));
+  assert.equal(saved.displayName, manifest.displayName); assert.equal(saved.spriteVersionNumber, 1); assert.equal(saved.spritesheetPath, 'spritesheet.webp');
+  assert.deepEqual(Buffer.from(exported[saved.spritesheetPath]), bytes);
+  const source = path.join(directory, 'local'); await fs.mkdir(source);
+  await fs.writeFile(path.join(source, 'pet.json'), JSON.stringify({ displayName: '新版', spriteVersionNumber: 2, spritesheetPath: 'atlas.png' }));
+  await fs.writeFile(path.join(source, 'atlas.png'), goodAtlas ?? await atlas());
+  assert.equal((await store.importDirectory(source)).pet.spriteVersion, 2);
+});
+
+test('art replacement preserves identity/preferences, invalid input preserves the previous revision', async t => {
+  const store = new PetStore(await workspace(t));
+  const { pet } = await store.importBytes({ name: '原名', description: '原描述' }, goodAtlas ?? await atlas());
+  await store.select(pet.id); await store.preferences({ mode: 'mini', position: { x: 24, y: 31 }, scale: 1.1 });
+  const before = await store.snapshot();
+  await assert.rejects(store.replaceBytes(pet.id, Buffer.from('invalid')));
+  assert.deepEqual(await store.snapshot(), before);
+  const bytes = await atlas(1), replaced = await store.replaceBytes(pet.id, bytes);
+  assert.equal(replaced.pet.id, pet.id); assert.equal(replaced.pet.name, '原名'); assert.equal(replaced.pet.description, '原描述');
+  assert.equal(replaced.pet.spriteVersion, 1); assert.notEqual(replaced.pet.sha256, pet.sha256);
+  assert.deepEqual((await store.snapshot()).preferences, before.preferences);
+  assert.deepEqual((await store.sprite(pet.id)).bytes, bytes);
+  const refreshed = (await store.snapshot()).pets.find(row => row.id === pet.id);
+  assert.match(refreshed.spritesheetUrl, new RegExp(replaced.pet.sha256));
+  await store.resetPreferences('size'); assert.equal((await store.snapshot()).preferences.scale, .72);
+  assert.deepEqual((await store.snapshot()).preferences.position, { x: 24, y: 31 });
+  await store.select(pet.id); assert.equal((await store.snapshot()).preferences.mode, 'pet');
+  await assert.rejects(store.replaceBytes('whale-girl', bytes), /内置/);
+  await assert.rejects(store.importBytes(null, bytes), /清单/);
 });

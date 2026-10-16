@@ -9,7 +9,7 @@ description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改�
 
 ## 选择调用方式
 
-优先使用宿主提供的 `pet_list`、`pet_select`、`pet_update`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences` 工具；以当前工具定义为准。没有可用工具时，使用已安装的 `dsh-hide-pet` 命令行，先读 `--help`。需要命令参数和本地包格式时读 [references/commands.md](references/commands.md)。
+优先使用宿主提供的 `pet_list`、`pet_select`、`pet_update`、`pet_replace`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`、`pet_reset_preferences` 工具；以当前工具定义为准。没有可用工具时，使用已安装的 `dsh-hide-pet` 命令行，先读 `--help`。需要命令参数和本地包格式时读 [references/commands.md](references/commands.md)。
 
 在本项目源码目录工作而命令尚未加入 PATH 时，可用 `node src/cli.mjs --help`，后续把命令中的 `dsh-hide-pet` 替换为 `node src/cli.mjs`。先确认实际项目目录与依赖已安装；不要把 PATH 中缺少命令直接判断为插件不可用。需要复制内置角色时，导入对应 `assets/pets/<id>` 目录会创建独立自定义 ID，再按要求改名、选择或导出；不会改动内置图集。
 
@@ -21,6 +21,7 @@ description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改�
 
 - 先读取列表，取得用户所指宠物的稳定 ID 以及当前选中项。同名且无法从上下文消歧时再询问用户。
 - 用户要切换时选择对应 ID；要改名或改描述时只修改相应字段；要隐藏、缩放或减少动画时修改偏好。
+- 管理界面在 Harness 的“设置 → 宠物伙伴”。`mode: mini` 只收起角色，保留聊天与动态；`visible: false` 隐藏整个伙伴。按需显示的唤出快捷键只在 Harness 窗口内生效。
 - 导出后检查实际输出路径；删除前用列表确认目标。遵循用户已授权的操作，不对普通本地操作重复索要确认。
 - 修改完成后再次读取列表或偏好，核对返回结果；失败时报告实际错误，不能以预览成功代替保存或选择成功。
 
@@ -33,6 +34,12 @@ description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改�
 3. 透明背景、裁切、共享缩放、排版和编码可以确定性处理。所有帧使用一致尺度和站立基线；保留跳跃本身的垂直位移。不要把每帧分别放大到格子边缘。
 4. 用 `pet_validate` 或 `dsh-hide-pet validate --file <图集>` 检查最终文件。任何重新编码或画面修改后重新校验。结构校验成功只证明该检查覆盖的格式要求；还要观看实际动画并检查角色一致性、动作语义、裁切、抖动和注视方向。
 5. 从最终图集制作并展示预览。单张静态图不能证明动作连贯。修复最小的失败源行，重新组装和复验，不只修预览。
-6. 按 [references/commands.md](references/commands.md) 的本地包格式导入，并核对返回的持久化 ID。只有用户要求启用时才选择该 ID。替换图集前先导出旧宠物，遵循当前版本支持的更新方式，不能假定重新导入会保留原 ID。
+6. 新宠物按 [references/commands.md](references/commands.md) 的本地包格式导入，核对返回的持久化 ID。只有用户要求启用时才选择该 ID。替换或升级现有自定义宠物时先导出备份，然后用 `pet_replace` 或 `replace <id> --file <图集>`，再次读取确认原 ID、名称和偏好保持不变；重新导入会生成新 ID。内置宠物需要先复制为自定义项。
 
 不要把角色的结构校验、人工画面检查、宿主安装和宿主交互测试混为同一项。交付时说明已检查的范围及尚未实际验证的行为。
+
+## 聊天与任务提醒
+
+宠物旁的快速聊天通过 Harness 原生会话发送文字；文件、`@` 上下文、技能和命令交给主会话输入栏解析。转入主输入栏只准备草稿，不能报告为已发送。创建和 v1 升级入口同样准备技能请求，不自动开始图像生成。
+
+任务提醒按需要回应、失败、完成待查看、运行排序。审批和提问由用户在对应原生会话中处理，不用宠物工具或模型回复代替授权。此插件目前提供应用内伙伴；不把它描述为系统置顶悬浮窗、系统全局热键、实时双向语音或云端宠物服务。

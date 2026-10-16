@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ANIMATIONS, CELL, clampPosition, frameFor, gazeForPoint, resolveAssetUrl, taskPresentation } from './client-model.mjs';
+import { ANIMATIONS, CELL, activityRows, clampPosition, frameFor, gazeForPoint, resolveAssetUrl, taskPresentation } from './client-model.mjs';
+import { combineSessionSources, sessionActivitySource } from './activity-source.mjs';
+import { createHarnessActions } from './harness-actions.mjs';
+import { PetDock, dockCss } from './pet-dock.jsx';
 
-export const inject = ['slots', 'uiSession', 'sessions'];
+export const inject = ['slots', 'uiSession', 'sessions', 'uiWorkspace', 'workspaces', 'conversation', 'remote', 'shortcuts'];
 
 const EMPTY_SESSIONS = Object.freeze({ byId: {} });
 const EMPTY_STATUS = new Map();
@@ -21,7 +24,7 @@ function useSource(source, fallback) {
   return useSyncExternalStore(actual.subscribe, actual.getSnapshot, actual.getSnapshot);
 }
 
-function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotion = false }) {
+function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotion = false, loop = false }) {
   const [time, setTime] = useState(0);
   const [failed, setFailed] = useState(false);
   const start = useRef(Date.now());
@@ -45,7 +48,7 @@ function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotio
   const width = CELL.width * scale;
   const height = CELL.height * scale;
   if (!src || failed) return <div className="dhp-load-art" style={{ width, height }}>{failed ? '形象暂未加载' : '准备形象中…'}</div>;
-  const frame = frameFor(animation, time, { reducedMotion, gaze, version });
+  const frame = frameFor(animation, time, { reducedMotion, gaze, version, loop });
   return <div className="dhp-sprite" aria-hidden="true" style={{ width, height, backgroundImage: `url(${JSON.stringify(src)})`, backgroundSize: `${width * 8}px ${height * frame.rows}px`, backgroundPosition: `${-width * frame.column}px ${-height * frame.row}px` }} />;
 }
 
@@ -81,10 +84,10 @@ function downloadArchive(result) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function PetApp({ ctx }) {
+export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const [state, setState] = useState({ pets: [], preferences: {} });
   const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(false);
+  const open = settingsOnly;
   const [tab, setTab] = useState('library');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
@@ -100,6 +103,9 @@ export function PetApp({ ctx }) {
   const [upload, setUpload] = useState(null);
   const [uploadName, setUploadName] = useState('');
   const [rename, setRename] = useState('');
+  const [description, setDescription] = useState('');
+  const [errors, setErrors] = useState(new Map());
+  const [chatFocus, setChatFocus] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [osReduced, setOsReduced] = useState(false);
   const mounted = useRef(true);
@@ -110,22 +116,31 @@ export function PetApp({ ctx }) {
   const timer = useRef(null);
   const panel = useRef(null);
   const fileInput = useRef(null);
+  const replacementInput = useRef(null);
+  const keyboardOrigin = useRef(null);
+  const native = useMemo(() => createHarnessActions(ctx), [ctx]);
   const sessions = useSource(ctx.sessions?.list, EMPTY_SESSION_SOURCE);
   const statuses = useSource(ctx.uiSession?.sessionStatus, EMPTY_STATUS_SOURCE);
-  const activeId = Object.values(sessions.byId || {}).find(row => (row.retainedBy?.mainView || 0) > 0)?.id;
-  const activeSession = activeId ? ctx.sessions?.binding?.(activeId)?.session : undefined;
-  const activeSource = useMemo(() => activeSession ? {
-    subscribe: listener => activeSession.subscribe(listener),
-    getSnapshot: () => activeSession.getSnapshot(),
-  } : EMPTY_ACTIVE_SOURCE, [activeSession]);
-  const sessionSnapshot = useSource(activeSource, EMPTY_ACTIVE_SOURCE);
-  const presentation = taskPresentation(sessions, statuses, sessionSnapshot);
+  const ids = [...new Set([...Object.keys(sessions.byId || {}), ...statuses.keys()])].sort().join('\u0000');
+  const sessionSources = useMemo(() => combineSessionSources(ids.split('\u0000').filter(Boolean).flatMap(id => {
+    const source = ctx.sessions?.binding?.(id)?.session;
+    return source ? [{ id, source: sessionActivitySource(source) }] : [];
+  })), [ctx, ids, sessions]);
+  const snapshots = useSource(sessionSources, EMPTY_ACTIVE_SOURCE);
+  const facts = useMemo(() => {
+    const result = new Map(snapshots);
+    for (const [id, message] of errors) if (!statuses.get(id)?.running) result.set(id, { ...result.get(id), lastAgentError: message });
+    return result;
+  }, [snapshots, errors, statuses]);
+  const rows = useMemo(() => activityRows(sessions, statuses, facts), [sessions, statuses, facts]);
+  const presentation = taskPresentation(sessions, statuses, null, facts);
   const prefs = state.preferences || {};
   const pet = state.pets.find(item => item.id === prefs.selectedPetId) || state.pets[0];
   const scale = Number.isFinite(prefs.scale) ? prefs.scale : .72;
   const size = { width: CELL.width * scale, height: CELL.height * scale };
   const reduced = Boolean(prefs.reducedMotion || osReduced);
   const visible = prefs.visible !== false;
+  const mini = prefs.mode === 'mini';
   const currentPosition = clampPosition(position || prefs.position, { width: window.innerWidth, height: window.innerHeight }, size);
 
   const acceptState = result => {
@@ -133,7 +148,7 @@ export function PetApp({ ctx }) {
     if (Array.isArray(next?.pets) && next.preferences) {
       stateRef.current = next;
       setState(next);
-      if (!drag.current) setPosition(next.preferences.position || null);
+      if (!drag.current && !keyboardOrigin.current) setPosition(next.preferences.position || null);
     }
   };
 
@@ -143,6 +158,7 @@ export function PetApp({ ctx }) {
     let polling;
     const controller = new AbortController();
     const refresh = async () => {
+      clearTimeout(polling);
       try {
         const next = await apiRequest('state', undefined, controller.signal);
         if (!stopped) { acceptState(next); setReady(true); }
@@ -153,6 +169,7 @@ export function PetApp({ ctx }) {
       }
     };
     refresh();
+    window.addEventListener('dhp-state-change', refresh);
     const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onReduced = () => setOsReduced(reducedQuery.matches);
     onReduced();
@@ -163,6 +180,7 @@ export function PetApp({ ctx }) {
       controller.abort();
       requestRef.current?.abort();
       clearTimeout(polling);
+      window.removeEventListener('dhp-state-change', refresh);
       clearTimeout(timer.current);
       if (moveRaf.current) cancelAnimationFrame(moveRaf.current);
       reducedQuery.removeEventListener('change', onReduced);
@@ -171,13 +189,29 @@ export function PetApp({ ctx }) {
 
   useEffect(() => {
     setRename(pet?.name || '');
+    setDescription(pet?.description || '');
     setConfirmDelete(false);
   }, [pet?.id, pet?.name]);
 
+  useEffect(() => native.subscribeErrors(({ id, message }) => setErrors(previous => new Map(previous).set(id, message))), [native]);
   useEffect(() => {
-    if (!open && !menu) return;
+    if (settingsOnly) return;
+    const focus = () => setChatFocus(value => value + 1);
+    window.addEventListener('dhp-focus-chat', focus);
+    return () => window.removeEventListener('dhp-focus-chat', focus);
+  }, [settingsOnly]);
+  useEffect(() => {
+    setErrors(previous => {
+      const next = new Map(previous);
+      for (const [id] of next) if (statuses.get(id)?.running || !sessions.byId?.[id]) next.delete(id);
+      return next.size === previous.size ? previous : next;
+    });
+  }, [statuses, sessions]);
+
+  useEffect(() => {
+    if (!menu) return;
     const close = event => {
-      if (event.key === 'Escape') { setOpen(false); setMenu(null); }
+      if (event.key === 'Escape') setMenu(null);
     };
     window.addEventListener('keydown', close);
     return () => window.removeEventListener('keydown', close);
@@ -235,6 +269,7 @@ export function PetApp({ ctx }) {
         acceptState(refreshed);
       }
       if (success) setMessage({ text: success });
+      if (!['export', 'validate'].includes(action)) window.dispatchEvent(new Event('dhp-state-change'));
       return result;
     } catch (error) {
       if (mounted.current && error.name !== 'AbortError') setMessage({ error: true, text: error.message });
@@ -244,11 +279,19 @@ export function PetApp({ ctx }) {
     }
   };
   const preferences = patch => perform('preferences', { patch });
+  useEffect(() => {
+    if (settingsOnly || !visible || prefs.visibilityBehavior !== 'on-demand') return;
+    const outside = event => {
+      if (!event.target.closest('.dhp-pet,.dhp-dock,.dhp-menu,[role="dialog"]')) preferences({ visible: false });
+    };
+    window.addEventListener('pointerdown', outside);
+    return () => window.removeEventListener('pointerdown', outside);
+  }, [settingsOnly, visible, prefs.visibilityBehavior, busy]);
   const play = stateName => {
     clearTimeout(timer.current);
     setGaze(null);
     setInteraction(stateName);
-    timer.current = setTimeout(() => setInteraction(null), stateName === 'jumping' ? 900 : 1500);
+    timer.current = setTimeout(() => setInteraction(null), stateName === 'jumping' ? 2520 : 2100);
   };
   const onDown = event => {
     if (event.button !== 0) return;
@@ -295,29 +338,55 @@ export function PetApp({ ctx }) {
     const result = await perform('export', { id: pet.id });
     if (result) try { downloadArchive(result); } catch (error) { setMessage({ error: true, text: error.message }); }
   };
+  const replacePet = async file => {
+    if (!file || !pet || pet.builtin) return;
+    try {
+      if (file.size > 24 * 1024 * 1024) throw new Error('文件超过 24 MB。');
+      await perform('replace', { id: pet.id, spritesheetBase64: await fileBase64(file) }, '图集已替换，伙伴 ID 与显示偏好已保留');
+    } catch (error) { setMessage({ error: true, text: error.message }); }
+  };
+  const nativePrompt = async text => {
+    if (busy) return;
+    setBusy(true); setMessage(null);
+    try { await native.openMainComposer({ text, workspaceId: native.getContext().currentWorkspaceId }); closeSettings?.(); }
+    catch (error) { setMessage({ error: true, text: error.message }); }
+    finally { if (mounted.current) setBusy(false); }
+  };
+  const createPet = () => nativePrompt(native.createPetPrompt());
   const actualAnimation = dragging ? dragAnimation : interaction || (hover && presentation.animation === 'idle' ? 'jumping' : presentation.animation);
-  const actualGaze = !dragging && !interaction && !hover && presentation.animation === 'idle' ? gaze : null;
+  const actualGaze = !dragging && !interaction && !hover && ['idle', 'running', 'waving'].includes(presentation.animation) ? gaze : null;
 
-  return <div className="dhp-root" data-dsh-hide-pet="true">
-    <style>{css}</style>
-    {visible && pet && <div className="dhp-pet" role="button" tabIndex={0} aria-label={`${pet.name}，点击打招呼，拖动移动，右键打开菜单`} data-dragging={dragging} style={{ left: currentPosition.x, top: currentPosition.y }}
+  return <div className={`dhp-root${settingsOnly ? ' dhp-settings' : ''}`} data-dsh-hide-pet="true">
+    <style>{css + dockCss + `.dhp-settings{position:relative;inset:auto;pointer-events:auto;width:100%;height:100%;min-width:0}.dhp-settings .dhp-panel{position:static;width:100%;max-width:none;max-height:none;overflow:visible;border:0;border-radius:0;box-shadow:none;animation:none}.dhp-settings .dhp-head{padding:0 0 18px}.dhp-settings .dhp-tabs{margin:0 0 18px}.dhp-settings .dhp-body{padding:0 0 24px}.dhp-settings .dhp-head h2{font-size:20px}.dhp-settings .dhp-art-stage{height:125px}`}</style>
+    {!settingsOnly && visible && !mini && pet && <div className="dhp-pet" role="button" tabIndex={0} aria-label={`${pet.name}，点击打招呼，拖动移动，方向键调整位置，右键打开菜单`} data-dragging={dragging} style={{ left: currentPosition.x, top: currentPosition.y }}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setDragging(false); }}
       onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)} onDoubleClick={() => play('waving')}
       onContextMenu={event => { event.preventDefault(); setMenu({ x: Math.min(event.clientX, window.innerWidth - 185), y: Math.min(event.clientY, window.innerHeight - 210) }); }}
-      onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); play('waving'); } if (event.key === 'ContextMenu') setMenu({ x: currentPosition.x, y: Math.max(8, currentPosition.y - 170) }); }}>
+      onBlur={() => { if (keyboardOrigin.current) { keyboardOrigin.current = null; preferences({ position: currentPosition }); } }}
+      onKeyDown={event => {
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+          event.preventDefault(); keyboardOrigin.current ||= currentPosition;
+          const step = event.shiftKey ? 20 : 5;
+          setPosition(clampPosition({ x: currentPosition.x + (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0), y: currentPosition.y + (event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0) }, { width: window.innerWidth, height: window.innerHeight }, size));
+        }
+        if (event.key === 'Escape' && keyboardOrigin.current) { event.preventDefault(); setPosition(keyboardOrigin.current); keyboardOrigin.current = null; }
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (keyboardOrigin.current) { keyboardOrigin.current = null; preferences({ position: currentPosition }); } else play('waving'); }
+        if (event.key === 'ContextMenu') setMenu({ x: currentPosition.x, y: Math.max(8, currentPosition.y - 170) });
+      }}>
       <div className="dhp-pet-bubble">{presentation.label} · {pet.name}</div>
       <Sprite pet={pet} animation={actualAnimation} gaze={actualGaze} scale={scale} reducedMotion={reduced} />
     </div>}
-    <button className="dhp-launcher" onClick={() => { setOpen(!open); setMenu(null); }} aria-expanded={open} aria-label="打开宠物伙伴管理器"><span aria-hidden="true">✦</span><span>伙伴</span></button>
+    {!settingsOnly && visible && <PetDock ctx={ctx} rows={rows} mini={mini} focusRequest={chatFocus} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
     {menu && <div className="dhp-menu" role="menu" style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}>
       <small>{pet?.name} · {presentation.label}</small>
       <button role="menuitem" onClick={() => { play('waving'); setMenu(null); }}>向我打招呼</button>
       <button role="menuitem" onClick={() => { play('jumping'); setMenu(null); }}>跳一下</button>
-      <button role="menuitem" onClick={() => { setOpen(true); setTab('library'); setMenu(null); }}>选择 / 管理伙伴</button>
+      <button role="menuitem" onClick={() => { preferences({ mode: mini ? 'pet' : 'mini' }); setMenu(null); }}>{mini ? '显示宠物形象' : '精简模式'}</button>
       <button role="menuitem" onClick={() => { preferences({ visible: false }); setMenu(null); }}>收起伙伴</button>
+      <small>设置 › 宠物伙伴 中管理形象</small>
     </div>}
-    {open && <section className="dhp-panel" role="dialog" aria-label="宠物伙伴" ref={panel}>
-      <header className="dhp-head"><div><div className="dhp-eyebrow">LITTLE COMPANY, BIG IDEAS</div><h2>你的工作伙伴</h2><p>一起思考，也一起发会儿呆。</p></div><button className="dhp-icon-button" onClick={() => setOpen(false)} aria-label="关闭">×</button></header>
+    {open && <section className="dhp-panel" aria-label="宠物伙伴" ref={panel}>
+      <header className="dhp-head"><div><h2>宠物伙伴</h2><p>选择陪你工作的伙伴，调整外观与互动。</p></div><button className="dhp-button" disabled={busy} onClick={() => apiRequest('state').then(acceptState).catch(error => setMessage({ error: true, text: error.message }))}>刷新</button></header>
       <div className="dhp-tabs" role="tablist" aria-label="伙伴管理">
         {[['library', '伙伴库'], ['motion', '动作预览'], ['settings', '偏好设置'], ['import', '导入']].map(([id, label]) => <button key={id} role="tab" id={`dhp-tab-${id}`} aria-controls="dhp-tab-content" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}
       </div>
@@ -330,25 +399,28 @@ export function PetApp({ ctx }) {
             {item.id === pet?.id && <span className="dhp-check">✓</span>}<div className="dhp-art-stage"><Sprite pet={item} scale={.59} reducedMotion={reduced} /></div><span className="dhp-card-name">{item.name}</span><span className="dhp-card-note">{item.builtin ? '初始伙伴' : '自定义伙伴'} · {Number(item.spriteVersion) === 1 ? '经典动作' : '16 向目光'}</span>
           </button>)}</div>
           {pet && <div className="dhp-selected"><div className="dhp-detail-title"><span>{pet.name}</span><span className="dhp-tag">{pet.builtin ? '内置' : '自定义'}</span></div><p className="dhp-detail-note">{pet.description}</p>
-            {!pet.builtin && <label className="dhp-field"><span>伙伴名称</span><input type="text" value={rename} maxLength={64} onChange={event => setRename(event.target.value)} /></label>}
+            {!pet.builtin && <><label className="dhp-field"><span>伙伴名称</span><input type="text" value={rename} maxLength={64} onChange={event => setRename(event.target.value)} /></label><label className="dhp-field"><span>描述</span><input type="text" value={description} maxLength={500} onChange={event => setDescription(event.target.value)} /></label></>}
             <div className="dhp-actions"><button className="dhp-button primary" disabled={busy} onClick={() => preferences({ visible: !visible })}>{visible ? '收起伙伴' : '唤出伙伴'}</button><button className="dhp-button" disabled={busy} onClick={exportPet}>导出 ZIP</button>
-              {!pet.builtin && <><button className="dhp-button" disabled={busy || !rename.trim() || rename === pet.name} onClick={() => perform('update', { id: pet.id, patch: { name: rename.trim() } }, '名称已更新')}>保存名称</button><button className="dhp-button danger" disabled={busy} onClick={() => confirmDelete ? perform('delete', { id: pet.id }, '已移出宠物库') : setConfirmDelete(true)}>{confirmDelete ? '确认删除此伙伴' : '删除'}</button>{confirmDelete && <button className="dhp-button" onClick={() => setConfirmDelete(false)}>取消</button>}</>}
+              {!pet.builtin && <><button className="dhp-button" disabled={busy || !rename.trim() || (rename === pet.name && description === pet.description)} onClick={() => perform('update', { id: pet.id, patch: { name: rename.trim(), description } }, '伙伴信息已更新')}>保存信息</button><button className="dhp-button" disabled={busy} onClick={() => replacementInput.current?.click()}>替换图集</button><input ref={replacementInput} type="file" accept=".png,.webp" hidden onChange={event => { replacePet(event.target.files?.[0]); event.target.value = ''; }} /><button className="dhp-button danger" disabled={busy} onClick={() => confirmDelete ? perform('delete', { id: pet.id }, '已移出宠物库') : setConfirmDelete(true)}>{confirmDelete ? '确认删除此伙伴' : '删除'}</button>{confirmDelete && <button className="dhp-button" onClick={() => setConfirmDelete(false)}>取消</button>}</>}
             </div></div>}
-          <p className="dhp-footer">拖动伙伴调整位置 · 点击打招呼 · 悬停跳跃 · 右键打开菜单</p>
+          <div className="dhp-actions" style={{ marginTop: 16 }}><button className="dhp-button" disabled={busy || !native.getContext().capabilities.composer || !native.getContext().currentWorkspaceId} onClick={createPet}>创建新伙伴…</button>{pet && !pet.builtin && Number(pet.spriteVersion) === 1 && <button className="dhp-button" disabled={busy || !native.getContext().currentWorkspaceId} onClick={() => nativePrompt(`请使用 dsh-hide-pet 技能将现有自定义宠物 ${pet.id}（${pet.name}）升级为 v2。先导出备份，保留角色、九类动作和原 ID，增加十六方向注视，校验及动画预览通过后用 pet_replace 替换图集；不要用重新导入来代替更新。`)}>升级为 v2…</button>}<button className="dhp-button" disabled={busy} onClick={() => preferences({ mode: 'mini', visible: true })}>精简模式 · 只显示操作栏</button></div>
+          <p className="dhp-footer">拖动调整位置 · 点击打招呼 · 悬停跳跃 · 方向键移动，Enter 保存，Esc 还原</p>
         </>}
         {ready && tab === 'motion' && <>
-          <div className="dhp-preview"><Sprite pet={pet} animation={preview} gaze={previewGaze} scale={.75} reducedMotion={reduced} /></div>
+          <div className="dhp-preview"><Sprite pet={pet} animation={preview} gaze={previewGaze} scale={.75} reducedMotion={reduced} loop /></div>
           <div className="dhp-animation-grid">{ANIMATIONS.map(item => <button key={item.id} aria-pressed={previewGaze === null && preview === item.id} onClick={() => { setPreview(item.id); setPreviewGaze(null); }}>{item.label}</button>)}</div>
-          {Number(pet?.spriteVersion) !== 1 && <><div className="dhp-label">目光方向 · 0° 朝上，顺时针</div><div className="dhp-direction-grid">{Array.from({ length: 16 }, (_, index) => <button key={index} aria-pressed={previewGaze === index} onClick={() => setPreviewGaze(index)}>{index * 22.5}°</button>)}</div></>}
+          {Number(pet?.spriteVersion) !== 1 && <><div className="dhp-label">目光方向 · 0° 朝上，顺时针</div><div className="dhp-direction-grid">{Array.from({ length: 16 }, (_, index) => <button key={index} aria-pressed={previewGaze === index} onClick={() => { setPreview('idle'); setPreviewGaze(index); }}>{index * 22.5}°</button>)}</div></>}
           <p className="dhp-footer">工作、等待和确认状态会跟随当前对话自动切换。预览仅在此面板播放。</p>
         </>}
         {ready && tab === 'settings' && <>
           <label className="dhp-field"><span className="dhp-field-head">伙伴大小<small>{Math.round(scale * 100)}%</small></span><input type="range" min="0.35" max="1.5" step="0.01" value={scale} disabled={busy} onChange={event => { const value = Number(event.target.value); setState(current => ({ ...current, preferences: { ...current.preferences, scale: value } })); }} onPointerUp={event => preferences({ scale: Number(event.target.value) })} onKeyUp={event => preferences({ scale: Number(event.currentTarget.value) })} /></label>
-          <label className="dhp-toggle"><div>显示伙伴<p>收起后仍可通过右下角入口唤回。</p></div><input type="checkbox" checked={visible} disabled={busy} onChange={event => preferences({ visible: event.target.checked })} /></label>
+          <label className="dhp-toggle"><div>显示伙伴<p>收起后可在此处或用 /pet show 唤回。</p></div><input type="checkbox" checked={visible} disabled={busy} onChange={event => preferences({ visible: event.target.checked })} /></label>
+          <label className="dhp-toggle"><div>精简模式<p>保留聊天与动态操作，暂时收起形象。</p></div><input type="checkbox" checked={mini} disabled={busy} onChange={event => preferences({ mode: event.target.checked ? 'mini' : 'pet' })} /></label>
+          <label className="dhp-field"><span>显示方式</span><select value={prefs.visibilityBehavior || 'always'} disabled={busy} onChange={event => preferences({ visibilityBehavior: event.target.value })}><option value="always">始终显示</option><option value="on-demand">按需显示 · 点击空白收起</option></select></label>
           <label className="dhp-toggle"><div>目光跟随指针<p>闲暇时朝你的鼠标方向望一望。</p></div><input type="checkbox" checked={prefs.followPointer !== false} disabled={busy || Number(pet?.spriteVersion) === 1} onChange={event => preferences({ followPointer: event.target.checked })} /></label>
           <label className="dhp-toggle"><div>减少动态效果<p>{osReduced ? '系统已启用减少动态效果。' : '保留静态姿态，减少循环动作。'}</p></div><input type="checkbox" checked={Boolean(prefs.reducedMotion)} disabled={busy} onChange={event => preferences({ reducedMotion: event.target.checked })} /></label>
-          <div className="dhp-actions" style={{ marginTop: 18 }}><button className="dhp-button" disabled={busy} onClick={() => { setPosition(null); preferences({ position: null }); }}>重置位置</button></div>
-          <p className="dhp-footer">偏好保存在本机，切换伙伴后继续保留。</p>
+          <div className="dhp-actions" style={{ marginTop: 18 }}><button className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'position' })}>重置位置</button><button className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'size' })}>重置大小</button></div>
+          <p className="dhp-footer">偏好保存在本机。Ctrl+Alt+P 在 Harness 窗口内唤出快速聊天；系统级悬浮窗和全局热键需要宿主支持。</p>
         </>}
         {ready && tab === 'import' && <>
           <div className="dhp-upload"><strong>让新伙伴加入</strong><p>导入宠物 ZIP 包，或透明 PNG / WebP 动作图。<br />v2：1536 × 2288 · 9 组动作 + 16 个目光方向</p><button className="dhp-button" disabled={busy} onClick={() => fileInput.current?.click()}>选择文件</button><input ref={fileInput} type="file" hidden accept=".zip,.png,.webp,application/zip,image/png,image/webp" onChange={event => { setUpload(event.target.files?.[0] || null); setMessage(null); event.target.value = ''; }} />{upload && <div className="dhp-file">{upload.name} · {(upload.size / 1024 / 1024).toFixed(2)} MB</div>}</div>
@@ -363,4 +435,12 @@ export function PetApp({ ctx }) {
 
 export function apply(ctx) {
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-hide-pet', order: 90 }, () => <PetApp ctx={ctx} />));
+  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-hide-pet', order: 40, label: () => '宠物伙伴' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
+  if (ctx.shortcuts?.register) ctx.effect(() => ctx.shortcuts.register({
+    id: 'dsh-hide-pet.quick-chat', label: () => '宠物：快速聊天', aliases: ['pet', '伙伴'],
+    defaults: Object.fromEntries(['desktop:windows', 'desktop:linux', 'desktop:macos', 'web:windows', 'web:macos'].map(platform => [platform, { code: 'KeyP', modifiers: ['primary', 'alt'] }])),
+    regions: ['page', 'editable'], modals: [], resolve: () => ({ status: 'handled', run: () => {
+      apiRequest('action', { action: 'preferences', patch: { visible: true } }).then(() => { window.dispatchEvent(new Event('dhp-state-change')); window.dispatchEvent(new Event('dhp-focus-chat')); }).catch(() => {});
+    } }),
+  }));
 }

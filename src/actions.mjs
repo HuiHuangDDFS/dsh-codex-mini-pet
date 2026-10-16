@@ -5,6 +5,11 @@ export async function performAction(store, request) {
   switch (request.action) {
     case 'select': return store.select(request.id);
     case 'preferences': return store.preferences(request.patch ?? request.preferences);
+    case 'reset': return store.resetPreferences(request.scope);
+    case 'replace': {
+      if (!request.spritesheetBase64) throw new Error('缺少图集。');
+      return store.replaceBytes(request.id, Buffer.from(request.spritesheetBase64, 'base64'), request.spriteVersion);
+    }
     case 'update': {
       const patch = request.patch ?? Object.fromEntries(['name', 'description'].filter(key => Object.hasOwn(request, key)).map(key => [key, request[key]]));
       const pet = await store.update(request.id, patch); const { directory, ...result } = pet; return result;
