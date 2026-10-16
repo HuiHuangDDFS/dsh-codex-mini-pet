@@ -1,0 +1,4 @@
+- insert:
+    - id: dsh-hide-pet
+      name: dsh-hide-pet
+      config: {}

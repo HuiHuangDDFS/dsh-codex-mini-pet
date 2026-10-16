@@ -1,0 +1,43 @@
+{
+  "id": "whale-girl",
+  "name": "深蓝鲸娘",
+  "description": "原创蓝白鲸鱼娘 Q 版桌面伙伴：鲸鱼帽、深蓝短发与白色刘海，支持九类动作和十六方向注视。",
+  "spriteVersion": 2,
+  "sha256": "dfdbe6c6120b95e95ebc4e387cf742267dcc1cd06994fc87f6bde2813727d24d",
+  "spritesheet": "spritesheet.png",
+  "preview": "preview.png",
+  "author": "AI-generated for the dsh-hide-pet project",
+  "license": "LicenseRef-ProjectAsset",
+  "source": {
+    "type": "ai-generated",
+    "tool": "built-in image_gen",
+    "generatedOn": "2026-10-16",
+    "officialDeepSeekArtwork": false,
+    "provenance": "provenance.md",
+    "stateSourceSha256": "546c0263b2c209c1ee37a27d1714b5bd00190b38796489198c13e7458fcac8d0",
+    "gazeSourceSha256": "7de3d2fa61f7b9cd77c13443c0fd78670999c3f6e18244f3fb12706b74174c3b"
+  },
+  "artwork": {
+    "width": 1536,
+    "height": 2288,
+    "columns": 8,
+    "rows": 11,
+    "cellWidth": 192,
+    "cellHeight": 208,
+    "frameCounts": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6,
+      8,
+      8
+    ],
+    "gazeOrder": "clockwise, screen up at 0, right at 4, down at 8, left at 12",
+    "quality": "AI-generated discrete poses; head gaze angles are approximate; see provenance."
+  }
+}

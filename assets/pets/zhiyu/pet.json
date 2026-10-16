@@ -1,0 +1,40 @@
+{
+  "id": "zhiyu",
+  "name": "智域",
+  "description": "用户选定的智域风格 Q 版桌面伙伴，复用已批准的白发黑衣宠物图集。",
+  "spriteVersion": 2,
+  "spritesheet": "spritesheet.png",
+  "preview": "preview.png",
+  "author": "User-provided existing artwork",
+  "license": "LicenseRef-UserSupplied",
+  "source": {
+    "type": "user-supplied",
+    "originalFilename": "智域-宠物图集.png",
+    "reuseAuthorizedByUser": true,
+    "preservedExactly": true,
+    "sha256": "bff1bd85efe2b45de5a80d68c47879589da7dd105dba56adec0d761fedc95791",
+    "provenance": "provenance.md"
+  },
+  "artwork": {
+    "width": 1536,
+    "height": 2288,
+    "columns": 8,
+    "rows": 11,
+    "cellWidth": 192,
+    "cellHeight": 208,
+    "frameCounts": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6,
+      8,
+      8
+    ],
+    "quality": "Existing source preserved byte for byte; semantic appearance inherited from source."
+  }
+}
