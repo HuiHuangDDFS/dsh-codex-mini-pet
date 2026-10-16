@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-0.2.1.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-0.3.2.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 
@@ -46,7 +46,9 @@ node src/cli.mjs preview
 
 “动态”显示多个会话的运行、等待回应、错误和未读完成状态，可打开、回复、停止、收起单条提醒或静音某个会话。需要审批或回答时，“前往处理”打开对应原生会话。静音按浏览器来源保存在本机，可用“恢复提醒”清除。
 
-精简模式仅保留聊天与动态；隐藏会收起整个伙伴。按需显示在点击外部区域时收起。Ctrl+Alt+Shift+P 在 Harness 窗口内唤出并聚焦快速聊天；快捷键可由宿主快捷键设置管理。它不是操作系统全局热键。拖动移动形象；方向键微调，Shift 加速，Enter 保存，Esc 还原。
+精简模式仅保留聊天与动态；隐藏会收起整个伙伴。按需显示在点击外部区域时收起。Ctrl+Alt+Shift+P 在 Harness 窗口内唤出并聚焦快速聊天；快捷键可由宿主快捷键设置管理。Windows 桌面置顶模式另提供固定的全局 Ctrl+Alt+Shift+P，热键被其他程序占用时可点击伙伴操作栏。Windows 桌面版默认独立置顶，主窗口最小化后仍可见；右键可打开设置、隐藏伙伴或切回应用内。完全退出 Harness 时关闭伙伴窗口。应用内拖动移动形象，也可方向键微调，Shift 加速，Enter 保存，Esc 还原。
+
+“设置 → 宠物伙伴 → 外观与行为”的“桌面置顶”开关控制 `surface: desktop | app`；CLI 可使用 `preferences --surface desktop` 或 `preferences --surface app`。Web 和非 Windows 平台保留应用内显示。桌面窗口启动失败时自动保留应用内伙伴。
 
 ## skill
 

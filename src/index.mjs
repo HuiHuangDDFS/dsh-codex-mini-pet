@@ -2,6 +2,7 @@ import { PetStore } from './store.mjs';
 import { createHandler, API_PREFIX } from './http.mjs';
 import { promises as fs } from 'node:fs';
 import { validateAtlas } from './atlas.mjs';
+import { DesktopCompanion } from './desktop-companion.mjs';
 
 export const name = 'dsh-hide-pet';
 export const inject = ['webServer', 'connection', 'tools', 'commands'];
@@ -9,7 +10,9 @@ const object = (properties = {}, required = []) => ({ type: 'object', properties
 const string = description => ({ type: 'string', description });
 export function apply(ctx, config = {}) {
   const store = new PetStore(config.dataDir);
-  const handler = createHandler(store, req => ctx.connection.admit(req));
+  const desktop = new DesktopCompanion(store);
+  ctx.effect(() => { desktop.start(); return () => desktop.dispose(); });
+  const handler = createHandler(store, req => ctx.connection.admit(req), desktop);
   ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: API_PREFIX, handler }));
   const register = (toolName, description, parameters, execute) => ctx.effect(() => ctx.tools.register({
     name: toolName, description, parameters,
@@ -23,7 +26,7 @@ export function apply(ctx, config = {}) {
   register('pet_validate', '校验本机 PNG/WebP 图集的尺寸、透明度、必填帧和空格；不证明动作语义。', object({ file: string('图集的绝对文件路径') }, ['file']), async args => validateAtlas(await fs.readFile(args.file)));
   register('pet_import', '导入本机宠物目录（pet.json 和 PNG/WebP）或 ZIP；校验通过后保存。', object({ file: string('目录或 ZIP 绝对路径') }, ['file']), async args => { const stat = await fs.stat(args.file); return stat.isDirectory() ? store.importDirectory(args.file) : store.importArchive(await fs.readFile(args.file)); });
   register('pet_export', '导出宠物为 ZIP 到指定的全新文件。', object({ id: string('宠物 ID'), file: string('ZIP 输出绝对路径，不覆盖已有文件') }, ['id', 'file']), async args => { await fs.writeFile(args.file, await store.export(args.id), { flag: 'wx' }); return { file: args.file }; });
-  register('pet_set_preferences', '设置显示、宠物或精简模式、按需显示、缩放、鼠标跟随和减少动态效果。', object({ visible: { type: 'boolean' }, mode: { type: 'string', enum: ['pet', 'mini'] }, visibilityBehavior: { type: 'string', enum: ['always', 'on-demand'] }, scale: { type: 'number' }, reducedMotion: { type: 'boolean' }, followPointer: { type: 'boolean' } }), args => store.preferences(args));
+  register('pet_set_preferences', '设置显示、宠物或精简模式、按需显示、缩放、鼠标跟随和减少动态效果。', object({ surface: { type: 'string', enum: ['desktop', 'app'] }, visible: { type: 'boolean' }, mode: { type: 'string', enum: ['pet', 'mini'] }, visibilityBehavior: { type: 'string', enum: ['always', 'on-demand'] }, scale: { type: 'number' }, reducedMotion: { type: 'boolean' }, followPointer: { type: 'boolean' } }), args => store.preferences(args));
   register('pet_reset_preferences', '重置宠物大小、位置或全部显示偏好。只重置大小或位置时保留已选宠物。', object({ scope: { type: 'string', enum: ['size', 'position', 'all'] } }, ['scope']), args => store.resetPreferences(args.scope));
   ctx.effect(() => ctx.commands.register({
     name: 'pet', description: '显示、隐藏、精简、列出或选择动画宠物；在设置 › 宠物伙伴管理', input: { hint: 'show | hide | mini | list | select <id> | reset [size|position|all]' },

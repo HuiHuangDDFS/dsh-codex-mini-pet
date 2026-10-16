@@ -1,6 +1,6 @@
 {
   "name": "dsh-hide-pet",
-  "version": "0.2.1",
+  "version": "0.3.2",
   "description": "DeepSeek Harness 的动画宠物伙伴：鲸鱼娘与智域，支持 Codex v1/v2 图集。",
   "type": "module",
   "main": "./lib/index.js",
@@ -17,6 +17,7 @@
     "lib",
     "cordis.patch.yml",
     "src",
+    "native",
     "assets",
     "skills",
     "locale",

@@ -31,6 +31,16 @@ async function decodeWebp(bytes) {
   return (await webpDecoder)(bytes);
 }
 
+/** Normalize an already validated local atlas for the Windows image decoder. */
+export async function desktopPng(input) {
+  const bytes = Buffer.from(input);
+  if (bytes[0] === 0x89) return bytes;
+  const report = await validateAtlas(bytes);
+  if (!report.ok) throw new Error(report.errors.join('\n'));
+  const image = await decodeWebp(bytes);
+  return PNG.sync.write({ width: image.width, height: image.height, data: Buffer.from(image.data) });
+}
+
 /** Inspect chunks without inflating pixels, including dimensions the decoder will actually use. */
 function pngFacts(bytes, dimensions) {
   let offset = 8, headers = 0, ended = false, animated = false, hasAlpha = false;

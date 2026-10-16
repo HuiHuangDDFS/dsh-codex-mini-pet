@@ -1,0 +1,64 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { DesktopCompanion, isWindowsDesktopHost } from '../src/desktop-companion.mjs';
+import { PetStore } from '../src/store.mjs';
+import { desktopPng } from '../src/atlas.mjs';
+
+const host = 'K:/app/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js';
+test('only Windows desktop hosts launch a native companion; launch failure stays optional', () => {
+  assert.equal(isWindowsDesktopHost('win32', [host]), true);
+  assert.equal(isWindowsDesktopHost('linux', [host]), false);
+  assert.equal(isWindowsDesktopHost('win32', ['dsh-desktop-host/lib/cli.js']), false);
+  const d = new DesktopCompanion({}, { enabled: true, spawnImpl() { throw new Error('blocked'); } });
+  assert.doesNotThrow(() => d.start());
+  assert.deepEqual(d.status(), { supported: true, active: false, error: 'blocked', hotkey: false });
+  d.dispose();
+});
+test('private child lifecycle, event bounds, commands and replies remain controlled', async () => {
+  const child = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), kill() {} });
+  let launch;
+  const d = new DesktopCompanion({ snapshot: async () => ({pets:[],preferences:{}}) }, { enabled:true, spawnImpl(...args) { launch=args;return child; } });
+  let written='';child.stdin.on('data',c=>{written+=c});
+  d.start();
+  assert.equal(launch[2].windowsHide,true);
+  assert.equal(launch[2].stdio[0],'pipe');
+  child.stdout.write('{"type":"ready","hwnd":42}\n');
+  assert.equal(d.active,true);
+  child.stdout.write('{"type":"send-chat","text":"hello"}\n');
+  d.onNative({type:'execute',file:'untrusted'});
+  d.onNative({type:'send-chat',text:''});
+  for(let i=0;i<40;i++)d.onNative({type:'open-settings'});
+  assert.equal(d.events.length,20);
+  const response=d.sync({replies:[{id:'1',kind:'send-chat',ok:false,error:'rejected'}]});
+  assert.equal(response.events[0].text,'hello');
+  assert.equal(d.sync().events.length,0);
+  assert.throws(()=>d.command('execute'));
+  d.sync({replies:[{type:'inspect',capturePath:'do-not-write',id:'2'}]});
+  assert.equal(written.includes('do-not-write'),false);
+  assert.equal(written.includes('inspect'),false);
+  d.command('toggle-chat');
+  assert.match(written,/toggle-chat/);
+  assert.match(written,/rejected/);
+  d.dispose();assert.equal(child.stdin.writableEnded,true);
+  child.emit('exit',0);assert.equal(d.active,false);
+});
+test('desktop position supports monitors left of primary and remains separate from app position',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'dsh-desktop-prefs-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ const store=new PetStore(dir);
+ await store.preferences({surface:'desktop',desktopPosition:{x:-1600,y:-100},position:{x:20,y:30}});
+ assert.equal((await store.snapshot()).preferences.desktopPosition.x,-1600);
+ await assert.rejects(store.preferences({surface:'invalid'}));
+ await assert.rejects(store.preferences({desktopPosition:{x:Infinity,y:0}}));
+ await store.resetPreferences('position');
+ const prefs=(await store.snapshot()).preferences;
+ assert.equal(prefs.desktopPosition,null);assert.equal(prefs.position,null);
+});
+test('desktop PNG normalization retains existing atlas pixels without changing bytes',async()=>{
+ const png=await fs.readFile(new URL('../assets/pets/zhiyu/spritesheet.png',import.meta.url));
+ assert.deepEqual(await desktopPng(png),png);
+});

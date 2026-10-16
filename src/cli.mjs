@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { PetStore } from './store.mjs';
 import { validateAtlas } from './atlas.mjs';
 
-const options = { 'data-dir': { type: 'string' }, file: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, visible: { type: 'string' }, mode: { type: 'string' }, 'visibility-behavior': { type: 'string' }, scope: { type: 'string' }, scale: { type: 'string' }, 'reduced-motion': { type: 'string' }, 'follow-pointer': { type: 'string' }, port: { type: 'string' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' } };
+const options = { 'data-dir': { type: 'string' }, file: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, visible: { type: 'string' }, mode: { type: 'string' }, surface: { type: 'string' }, 'visibility-behavior': { type: 'string' }, scope: { type: 'string' }, scale: { type: 'string' }, 'reduced-motion': { type: 'string' }, 'follow-pointer': { type: 'string' }, port: { type: 'string' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' } };
 export async function run(argv = process.argv.slice(2)) {
   const { values, positionals } = parseArgs({ args: argv, options, allowPositionals: true });
   const [command = 'help', id, destination] = positionals;
@@ -27,6 +27,7 @@ export async function run(argv = process.argv.slice(2)) {
     for (const [flag, key] of [['visible', 'visible'], ['reduced-motion', 'reducedMotion'], ['follow-pointer', 'followPointer']]) if (flag in values) patch[key] = boolean(values[flag]);
     if ('scale' in values) patch.scale = Number(values.scale);
     if ('mode' in values) patch.mode = values.mode;
+    if ('surface' in values) patch.surface = values.surface;
     if ('visibility-behavior' in values) patch.visibilityBehavior = values['visibility-behavior'];
     result = Object.keys(patch).length ? await store.preferences(patch) : (await store.snapshot()).preferences;
   } else if (command === 'preview') { const { startPreview } = await import('./preview.mjs'); return startPreview({ dataDir: values['data-dir'], port: values.port, file: values.file, petId: id }); }

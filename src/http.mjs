@@ -8,7 +8,7 @@ async function readJson(req) {
   for await (const chunk of req) { size += chunk.length; if (size > BODY_LIMIT) throw new Error('请求过大。'); chunks.push(chunk); }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-export function createHandler(store, admit = () => ({ peer: {} })) {
+export function createHandler(store, admit = () => ({ peer: {} }), desktop = null) {
   return async (req, res) => {
     try {
       const admission = admit(req);
@@ -16,7 +16,9 @@ export function createHandler(store, admit = () => ({ peer: {} })) {
       const url = new URL(req.url, 'http://localhost');
       if (!url.pathname.startsWith(API_PREFIX + '/')) return json(res, 404, { error: '找不到宠物资源。' });
       const route = url.pathname.slice(API_PREFIX.length + 1);
-      if (req.method === 'GET' && route === 'api/state') return json(res, 200, await store.snapshot());
+      if (req.method === 'GET' && route === 'api/state') return json(res, 200, { ...await store.snapshot(), ...(desktop ? { desktop: desktop.status() } : {}) });
+      if (req.method === 'POST' && route === 'api/desktop/sync' && desktop) return json(res, 200, desktop.sync(await readJson(req)));
+      if (req.method === 'POST' && route === 'api/desktop/command' && desktop) return json(res, 200, desktop.command((await readJson(req)).name));
       if (req.method === 'POST' && route === 'api/action') return json(res, 200, await performAction(store, await readJson(req)));
       if (req.method === 'GET' && /^sprites\/[a-z0-9_-]+$/.test(route)) {
         const { bytes, type } = await store.sprite(route.slice('sprites/'.length));

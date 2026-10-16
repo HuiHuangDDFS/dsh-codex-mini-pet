@@ -9,7 +9,7 @@ import lockfile from 'proper-lockfile';
 
 export const ASSET_ROOT = fileURLToPath(new URL('../assets/pets/', import.meta.url));
 export const DEFAULT_DATA_DIR = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'hide-pet');
-const DEFAULT_PREFERENCES = { selectedPetId: 'whale-girl', visible: true, mode: 'pet', visibilityBehavior: 'always', scale: 0.72, reducedMotion: false, position: null, followPointer: true };
+const DEFAULT_PREFERENCES = { selectedPetId: 'whale-girl', visible: true, mode: 'pet', surface: 'desktop', desktopPosition: null, visibilityBehavior: 'always', scale: 0.72, reducedMotion: false, position: null, followPointer: true };
 const safeId = value => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value);
 const safeSpriteName = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,191}\.(png|webp)$/i.test(value);
 const text = (value, max, label) => { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`${label}不能为空且不能超过 ${max} 字。`); return value.trim(); };
@@ -78,10 +78,12 @@ export class PetStore {
   }
   async preferences(patch) {
     if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('偏好设置必须是对象。');
-    const allowed = new Set(['visible', 'mode', 'visibilityBehavior', 'scale', 'reducedMotion', 'position', 'followPointer']);
+    const allowed = new Set(['visible', 'mode', 'surface', 'desktopPosition', 'visibilityBehavior', 'scale', 'reducedMotion', 'position', 'followPointer']);
     for (const key of Object.keys(patch)) if (!allowed.has(key)) throw new Error(`未知偏好：${key}`);
     for (const key of ['visible', 'reducedMotion', 'followPointer']) if (key in patch && typeof patch[key] !== 'boolean') throw new Error(`${key} 必须是布尔值。`);
     if ('mode' in patch && !['pet', 'mini'].includes(patch.mode)) throw new Error('显示模式必须为 pet 或 mini。');
+    if ('surface' in patch && !['desktop', 'app'].includes(patch.surface)) throw new Error('显示位置必须为 desktop 或 app。');
+    if ('desktopPosition' in patch && patch.desktopPosition !== null && (typeof patch.desktopPosition !== 'object' || !Number.isFinite(patch.desktopPosition.x) || !Number.isFinite(patch.desktopPosition.y) || Math.abs(patch.desktopPosition.x) > 100000 || Math.abs(patch.desktopPosition.y) > 100000)) throw new Error('桌面位置无效。');
     if ('visibilityBehavior' in patch && !['always', 'on-demand'].includes(patch.visibilityBehavior)) throw new Error('显示方式必须为 always 或 on-demand。');
     if ('scale' in patch && (!Number.isFinite(patch.scale) || patch.scale < 0.35 || patch.scale > 1.5)) throw new Error('缩放范围为 0.35–1.5。');
     if ('position' in patch && patch.position !== null && (typeof patch.position !== 'object' || !Number.isFinite(patch.position.x) || !Number.isFinite(patch.position.y) || patch.position.x < 0 || patch.position.y < 0)) throw new Error('位置需要非负的 x、y 坐标。');
@@ -93,7 +95,7 @@ export class PetStore {
       const state = await this.read();
       if (scope === 'all') state.preferences = { ...DEFAULT_PREFERENCES };
       else if (scope === 'size') state.preferences.scale = DEFAULT_PREFERENCES.scale;
-      else state.preferences.position = DEFAULT_PREFERENCES.position;
+      else { state.preferences.position = DEFAULT_PREFERENCES.position; state.preferences.desktopPosition = null; }
       await this.write(state); return (await this.snapshot()).preferences;
     });
   }

@@ -50,3 +50,5 @@ dsh-hide-pet preview --file <图集路径> --port 5058
 `reset --scope size|position|all` 分别重置大小、位置或全部显示偏好；只有 `all` 会恢复默认选择。`visibilityBehavior` 为 `always` 或 `on-demand`，后者在点击伙伴和设置窗口以外区域时收起；`visible` 控制整个伙伴，`mode` 为 `pet` 或 `mini`。界面管理入口是“设置 → 宠物伙伴”（桌面版先打开左下角“更多”），应用内 Ctrl+Alt+Shift+P 唤出聊天（macOS 对应 Command+Option+Shift+P）。若宿主仍有默认按键冲突，命令保留为未绑定项，可在快捷键设置中分配，宠物本身继续运行。
 
 读取命令返回的实际 ID、偏好和输出路径后再报告成功。导出包含角色元数据和图集，可用于本地备份与迁移；目标 ZIP 必须尚不存在，命令不会覆盖原文件。不包含云端账户或跨设备同步服务。
+
+Windows 桌面版 0.3.2+：`preferences --surface desktop` 使用独立置顶窗口，`preferences --surface app` 切回应用内。`pet_set_preferences` 同样接受 `surface`。桌面与应用内位置分别保存；重置位置会清除两者。
