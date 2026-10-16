@@ -5,7 +5,7 @@ export function setNativeUi(value) { kit = value || {}; }
 
 export function UiButton({ className = '', variant, ...props }) {
   const selected = variant || (className.split(' ').includes('primary') ? 'primary' : 'outline');
-  if (kit.Button) return <kit.Button {...props} size="sm" variant={selected} className={className.includes('danger') ? 'dhp-action-danger' : undefined} />;
+  if (kit.Button) return <kit.Button {...props} size="sm" variant={selected} data-dhp-variant={selected} className={`dhp-native-button${className.includes('danger') ? ' dhp-action-danger' : ''}`} />;
   return <button {...props} className={className || `dhp-button ${selected}`} />;
 }
 export function UiInput(props) { return kit.Input ? <kit.Input {...props} /> : <input {...props} />; }
@@ -20,6 +20,7 @@ export function UiTabs({ value, onChange }) {
 }
 
 export const settingsCss = `
+.dhp-root .dhp-native-button{color:var(--dsw-alias-label-primary,var(--hp-text))}.dhp-root .dhp-native-button[data-dhp-variant=primary]{color:var(--dsw-alias-label-primary-foreground,#fff)}
 .dhp-root.dhp-settings{position:relative;inset:auto;pointer-events:auto;width:100%;min-width:0;height:auto;font:inherit;color:var(--dsw-alias-label-primary);background:transparent}
 .dhp-settings .dhp-panel{position:static;width:100%;max-width:760px;max-height:none;overflow:visible;border:0;border-radius:0;box-shadow:none;animation:none;background:transparent}
 .dhp-settings .dhp-head{padding:0 0 20px;align-items:center;gap:16px}.dhp-settings .dhp-head h2{font-size:16px;font-weight:500;line-height:24px;letter-spacing:0;margin:0}.dhp-settings .dhp-head p{font-size:12px;line-height:18px;margin:5px 0 0;color:var(--dsw-alias-label-secondary)}

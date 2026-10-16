@@ -10,12 +10,14 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
 namespace DshPet {
@@ -59,7 +61,7 @@ namespace DshPet {
     readonly Image sprite = new Image();
     readonly StackPanel stack = new StackPanel();
     readonly StackPanel controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-    readonly Border toolbar = new Border { CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(.5), Padding = new Thickness(3), Margin = new Thickness(3, 1, 3, 3) };
+    readonly Border toolbar = new Border { CornerRadius = new CornerRadius(19), BorderThickness = new Thickness(.5), Padding = new Thickness(3), Margin = new Thickness(5, 2, 5, 6) };
     readonly Popup chat = new Popup { AllowsTransparency = true, StaysOpen = false, Placement = PlacementMode.Top };
     readonly Popup activity = new Popup { AllowsTransparency = true, StaysOpen = false, Placement = PlacementMode.Top };
     readonly TextBox prompt = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 76, MaxHeight = 160, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(8), FontSize = 13 };
@@ -74,7 +76,8 @@ namespace DshPet {
     Dictionary<string, object> preferences = new Dictionary<string, object>();
     Dictionary<string, object> context = new Dictionary<string, object>();
     string lastRows = "", currentName = "", stateKey = "";
-    bool hotkey, mini, hovering, dragging, dark = true, firstPosition = true, pending;
+    bool hotkey, mini, dragging, pointerDown, dark = true, firstPosition = true, pending;
+    POINT dragStart, dragLast; double dragLeft, dragTop; string dragDirection = "right";
     int gaze = -2, row, column;
     DateTime pendingSince;
     IntPtr handle;
@@ -92,30 +95,52 @@ namespace DshPet {
       Title = "DeepSeek Harness · 宠物伙伴"; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
       AllowsTransparency = true; Background = Brushes.Transparent; ShowInTaskbar = false; ShowActivated = false;
       Topmost = true; Width = 170; SizeToContent = SizeToContent.Height; Focusable = true;
-      FontFamily = new FontFamily("Segoe UI, Microsoft YaHei");
-      stack.Children.Add(sprite); controls.Children.Add(MakeButton("聊一聊", delegate { ToggleChat(); }));
-      activityButton = MakeButton("动态", delegate { chat.IsOpen = false; activity.IsOpen = !activity.IsOpen; });
+      FontFamily = new FontFamily("Microsoft YaHei UI, Segoe UI");
+      UseLayoutRounding = true; SnapsToDevicePixels = true;
+      toolbar.Effect = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 2, Opacity = .12, Color = Colors.Black };
+      stack.Children.Add(sprite); controls.Children.Add(MakeToolbarButton("聊一聊", "M 3,2.5 L 13,2.5 Q 14,2.5 14,3.5 L 14,10 Q 14,11 13,11 L 7,11 L 3,14 L 3,11 Q 2,11 2,10 L 2,3.5 Q 2,2.5 3,2.5", delegate { ToggleChat(); }));
+      activityButton = MakeToolbarButton("动态", "M 2,4 L 4,4 M 7,4 L 14,4 M 2,8 L 4,8 M 7,8 L 14,8 M 2,12 L 4,12 M 7,12 L 14,12", delegate { chat.IsOpen = false; activity.IsOpen = !activity.IsOpen; });
+      controls.Children.Add(new Border { Width = .5, Height = 14, Background = line, Margin = new Thickness(2, 0, 2, 0), Name = "Divider" });
       controls.Children.Add(activityButton); toolbar.Child = controls; stack.Children.Add(toolbar); Content = stack;
       sprite.HorizontalAlignment = HorizontalAlignment.Center; sprite.Stretch = Stretch.Uniform;
       RenderOptions.SetBitmapScalingMode(sprite, BitmapScalingMode.HighQuality);
       chat.PlacementTarget = toolbar; activity.PlacementTarget = toolbar;
-      var chatPanel = new StackPanel(); chatPanel.Children.Add(workspace); chatPanel.Children.Add(prompt);
-      sendButton = MakeButton("发送", delegate { SendPrompt(); }); sendButton.HorizontalAlignment = HorizontalAlignment.Right; sendButton.Margin = new Thickness(0, 8, 0, 0);
-      chatPanel.Children.Add(sendButton); chatPanel.Children.Add(feedback); chat.Child = PopupBorder(chatPanel, 300);
-      chatPanel.Children.Add(MakeButton("在主会话编辑", delegate { if (!pending && !String.IsNullOrWhiteSpace(prompt.Text)) { pending = true; pendingSince = DateTime.UtcNow; sendButton.IsEnabled = false; OpenHarness(); NativeApp.Emit(new { type = "edit-chat", text = prompt.Text }); } }));
+      var chatPanel = new StackPanel();
+      var titleRow = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+      var closeChat = MakeButton("×", delegate { chat.IsOpen = false; }); closeChat.ToolTip = "关闭聊天"; DockPanel.SetDock(closeChat, Dock.Right); titleRow.Children.Add(closeChat);
+      titleRow.Children.Add(new TextBlock { Text = "快速聊天", FontSize = 14, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+      chatPanel.Children.Add(titleRow); chatPanel.Children.Add(workspace); chatPanel.Children.Add(prompt);
+      var chatActions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
+      sendButton = MakeButton("发送", delegate { SendPrompt(); }); sendButton.Tag = "primary"; sendButton.Margin = new Thickness(8, 0, 0, 0);
+      chatPanel.Children.Add(chatActions); chatPanel.Children.Add(feedback); chat.Child = PopupBorder(chatPanel, 320);
+      chatActions.Children.Add(MakeButton("在主会话编辑", delegate { if (!pending && !String.IsNullOrWhiteSpace(prompt.Text)) { pending = true; pendingSince = DateTime.UtcNow; sendButton.IsEnabled = false; OpenHarness(); NativeApp.Emit(new { type = "edit-chat", text = prompt.Text }); } }));
+      chatActions.Children.Add(sendButton);
       activity.Child = PopupBorder(new ScrollViewer { Content = activities, MaxHeight = 380, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, 290);
       prompt.PreviewKeyDown += delegate(object sender, KeyEventArgs e) {
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0) { e.Handled = true; SendPrompt(); }
       };
+      sprite.Cursor = Cursors.Hand;
       sprite.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e) {
-        double x = Left, y = Top; dragging = true;
-        try { DragMove(); } catch { } dragging = false;
-        ClampToScreen();
-        if (Math.Abs(x - Left) + Math.Abs(y - Top) > 3) NativeApp.Emit(new { type = "position", x = Left, y = Top });
-        else NativeApp.Emit(new { type = "greet" });
+        if (!GetCursorPos(out dragStart)) return;
+        pointerDown = true; dragging = false; dragLast = dragStart; dragLeft = Left; dragTop = Top;
+        sprite.CaptureMouse(); e.Handled = true;
       };
-      MouseEnter += delegate { hovering = true; UpdateToolbar(); NativeApp.Emit(new { type = "hover", value = true }); };
-      MouseLeave += delegate { hovering = false; UpdateToolbar(); NativeApp.Emit(new { type = "hover", value = false }); };
+      sprite.MouseMove += delegate(object sender, MouseEventArgs e) {
+        if (!pointerDown) return;
+        if (e.LeftButton != MouseButtonState.Pressed) { FinishDrag(); return; }
+        POINT current; if (!GetCursorPos(out current)) return;
+        var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
+        var delta = transform.Transform(new Vector(current.X - dragStart.X, current.Y - dragStart.Y));
+        if (!dragging && Math.Abs(delta.X) + Math.Abs(delta.Y) < 4) return;
+        string direction = current.X < dragLast.X ? "left" : current.X > dragLast.X ? "right" : dragDirection;
+        if (!dragging || direction != dragDirection) { dragDirection = direction; NativeApp.Emit(new { type = "drag", active = true, direction = direction }); }
+        dragging = true; sprite.Cursor = Cursors.SizeAll; dragLast = current;
+        Left = dragLeft + delta.X; Top = dragTop + delta.Y; e.Handled = true;
+      };
+      sprite.MouseLeftButtonUp += delegate(object sender, MouseButtonEventArgs e) { if (pointerDown) { FinishDrag(); e.Handled = true; } };
+      sprite.LostMouseCapture += delegate { if (pointerDown) FinishDrag(); };
+      MouseEnter += delegate { UpdateToolbar(); NativeApp.Emit(new { type = "hover", value = true }); };
+      MouseLeave += delegate { UpdateToolbar(); NativeApp.Emit(new { type = "hover", value = false }); };
       Deactivated += delegate {
         if (Str(preferences, "visibilityBehavior") == "on-demand" && !activity.IsOpen && !chat.IsOpen) {
           Hide(); NativeApp.Emit(new { type = "preferences", patch = new { visible = false } });
@@ -132,20 +157,47 @@ namespace DshPet {
       pointer.Tick += delegate { ObservePointer(); }; pointer.Start();
       ApplyTheme(new Dictionary<string, object>()); BuildMenu();
     }
+    void FinishDrag() {
+      bool moved = dragging; pointerDown = false; dragging = false;
+      sprite.ReleaseMouseCapture(); sprite.Cursor = Cursors.Hand;
+      if (moved) { ClampToScreen(); NativeApp.Emit(new { type = "drag", active = false, direction = dragDirection }); NativeApp.Emit(new { type = "position", x = Left, y = Top }); }
+      else NativeApp.Emit(new { type = "greet" });
+    }
     Button MakeButton(string label, Action action) {
-      var border = new FrameworkElementFactory(typeof(Border)); border.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+      var border = new FrameworkElementFactory(typeof(Border)); border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
       border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Control.BackgroundProperty));
-      var content = new FrameworkElementFactory(typeof(ContentPresenter)); content.SetValue(FrameworkElement.MarginProperty, new Thickness(8, 4, 8, 4));
+      border.SetValue(TextElement.ForegroundProperty, new TemplateBindingExtension(Control.ForegroundProperty));
+      var content = new FrameworkElementFactory(typeof(ContentPresenter));
+      content.SetValue(ContentPresenter.ContentProperty, new TemplateBindingExtension(ContentControl.ContentProperty));
+      content.SetValue(ContentPresenter.ContentTemplateProperty, new TemplateBindingExtension(ContentControl.ContentTemplateProperty));
+      content.SetValue(FrameworkElement.MarginProperty, new Thickness(9, 5, 9, 5));
       content.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center); content.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
       border.AppendChild(content);
-      var button = new Button { Content = label, FontSize = 11, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, MinHeight = 25, Template = new ControlTemplate(typeof(Button)) { VisualTree = border } };
+      var button = new Button { Content = label, FontSize = 12, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, MinHeight = 30, Template = new ControlTemplate(typeof(Button)) { VisualTree = border } };
+      AutomationProperties.SetName(button, label);
+      button.MouseEnter += delegate { PaintButton(button, true); }; button.MouseLeave += delegate { PaintButton(button, false); };
+      button.IsEnabledChanged += delegate { button.Opacity = button.IsEnabled ? 1 : .45; };
       button.Click += delegate { action(); }; buttons.Add(button); return button;
+    }
+    Button MakeToolbarButton(string label, string geometry, Action action) {
+      var button = MakeButton(label, action);
+      var panel = new StackPanel { Orientation = Orientation.Horizontal };
+      var icon = new System.Windows.Shapes.Path { Data = Geometry.Parse(geometry), Width = 16, Height = 16, Stretch = Stretch.None, StrokeThickness = 1.3, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+      icon.SetBinding(System.Windows.Shapes.Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = button });
+      panel.Children.Add(icon); panel.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center }); button.Content = panel;
+      return button;
+    }
+    void PaintButton(Button button, bool hover) {
+      bool primary = Convert.ToString(button.Tag) == "primary";
+      button.Background = primary ? fg : hover ? Color(dark ? "#363638" : "#F0F1F3") : Brushes.Transparent;
+      button.Foreground = primary ? bg : fg;
     }
     Border PopupBorder(UIElement child, double width) { return new Border { Child = child, Width = width, Padding = new Thickness(12), CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(.5), Margin = new Thickness(5) }; }
     void ApplyTheme(Dictionary<string, object> theme) {
       dark = Bool(theme, "dark", true); bg = Color(dark ? "#242426" : "#FFFFFF"); fg = Color(dark ? "#ECECEF" : "#202124"); line = Color(dark ? "#454548" : "#DADADD");
       toolbar.Background = bg; toolbar.BorderBrush = line;
-      foreach (var button in buttons) { button.Background = bg; button.Foreground = fg; }
+      foreach (var button in buttons) PaintButton(button, button.IsMouseOver);
+      foreach (var element in controls.Children) { var divider = element as Border; if (divider != null) divider.Background = line; }
       foreach (var popup in new Popup[] { chat, activity }) { var border = (Border)popup.Child; border.Background = bg; border.BorderBrush = line; border.TextBlockForeground(fg); }
       prompt.Background = Color(dark ? "#19191B" : "#F6F6F8"); prompt.Foreground = fg; prompt.CaretBrush = fg; prompt.BorderBrush = line;
       workspace.Foreground = fg; feedback.Foreground = fg;
@@ -189,7 +241,7 @@ namespace DshPet {
         if (window != IntPtr.Zero) { ShowWindow(window, 9); SetForegroundWindow(window); }
       } catch { }
     }
-    void UpdateToolbar() { toolbar.Opacity = mini || hovering || chat.IsOpen || activity.IsOpen ? 1 : 0; toolbar.IsHitTestVisible = toolbar.Opacity > 0; }
+    void UpdateToolbar() { toolbar.Opacity = 1; toolbar.IsHitTestVisible = true; }
     void ObservePointer() {
       UpdateToolbar(); if (!IsVisible || dragging) return;
       POINT point; if (!GetCursorPos(out point)) return;
@@ -208,6 +260,22 @@ namespace DshPet {
         var br = transform.Transform(new Point(screen.WorkingArea.Right, screen.WorkingArea.Bottom));
         Left = Math.Max(tl.X, Math.Min(Left, br.X - ActualWidth)); Top = Math.Max(tl.Y, Math.Min(Top, br.Y - ActualHeight));
       } catch { Left = Math.Max(SystemParameters.VirtualScreenLeft, Math.Min(Left, SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width)); }
+    }
+    object BoundsOf(FrameworkElement element) {
+      if (!element.IsVisible || element.ActualWidth <= 0) return null;
+      var a = element.PointToScreen(new Point(0, 0)); var b = element.PointToScreen(new Point(element.ActualWidth, element.ActualHeight));
+      return new { x = a.X, y = a.Y, width = b.X - a.X, height = b.Y - a.Y };
+    }
+    static string RenderedText(DependencyObject element) {
+      var text = element as TextBlock; if (text != null) return text.Text;
+      var value = new StringBuilder();
+      for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++) value.Append(RenderedText(VisualTreeHelper.GetChild(element, i)));
+      return value.ToString();
+    }
+    static void Capture(FrameworkElement element, string path) {
+      if (String.IsNullOrEmpty(path) || !element.IsVisible) return;
+      var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(element);
+      var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using (var output = File.Create(path)) encoder.Save(output);
     }
     public void Accept(Dictionary<string, object> message) {
       string type = Str(message, "type");
@@ -228,25 +296,26 @@ namespace DshPet {
       }
       if (type == "inspect") {
         int owner; bool minimized = false; if (Int32.TryParse(Environment.GetEnvironmentVariable("DSH_PET_OWNER_PID"), out owner)) { try { minimized = IsIconic(Process.GetProcessById(owner).MainWindowHandle); } catch { } }
-        string capture = Str(message, "capturePath");
-        if (!String.IsNullOrEmpty(capture)) { var bitmap = new RenderTargetBitmap((int)Math.Ceiling(ActualWidth), (int)Math.Ceiling(ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(this); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using (var output = File.Create(capture)) encoder.Save(output); }
-        NativeApp.Emit(new { type = "inspection", visible = IsVisible, topmost = Topmost, extendedStyle = GetWindowLongPtr(handle, -20).ToInt64(), ownerMinimized = minimized, left = Left, top = Top, name = currentName, frameCount = frames.Length, chatOpen = chat.IsOpen, inputFocused = prompt.IsKeyboardFocused, activityCount = activities.Children.Count }); return;
+        UpdateLayout(); Capture(this, Str(message, "capturePath")); Capture(chat.Child as FrameworkElement, Str(message, "captureChatPath"));
+        var labels = new List<object>(); foreach (var button in buttons) labels.Add(new { label = AutomationProperties.GetName(button), text = RenderedText(button), visible = button.IsVisible, bounds = BoundsOf(button) });
+        NativeApp.Emit(new { type = "inspection", visible = IsVisible, topmost = Topmost, extendedStyle = GetWindowLongPtr(handle, -20).ToInt64(), ownerMinimized = minimized, left = Left, top = Top, name = currentName, frameCount = frames.Length, chatOpen = chat.IsOpen, inputFocused = prompt.IsKeyboardFocused, activityCount = activities.Children.Count, toolbarVisible = toolbar.IsVisible && toolbar.Opacity > 0, toolbarBounds = BoundsOf(toolbar), spriteBounds = BoundsOf(sprite), buttons = labels }); return;
       }
       if (type != "state") return;
       preferences = Obj(message, "preferences"); context = Obj(message, "context"); currentName = Str(message, "name");
       ToolTip = currentName + " · " + Str(message, "label");
       double scale = Math.Max(.35, Math.Min(1.5, Num(preferences, "scale", .72)));
       mini = Str(preferences, "mode") == "mini"; sprite.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
-      sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(132, sprite.Width + 8);
+      sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(184, sprite.Width + 10);
       ApplyTheme(Obj(message, "theme"));
+      chat.PopupAnimation = activity.PopupAnimation = Bool(preferences, "reducedMotion") ? PopupAnimation.None : PopupAnimation.Fade;
       string path = Str(context, "currentWorkspacePath"); workspace.Text = String.IsNullOrEmpty(path) ? "新会话 · 请先在 Harness 选择工作区" : "新会话 · " + System.IO.Path.GetFileName(path.TrimEnd('\\', '/'));
       var rowList = new List<object>(); var incomingRows = Get(message, "rows") as IEnumerable;
       if (incomingRows != null) foreach (var value in incomingRows) rowList.Add(value);
       var rows = rowList.ToArray(); string rowsKey = NativeApp.Json.Serialize(rows);
       if (rowsKey != lastRows) {
-        lastRows = rowsKey; foreach (var element in activities.Children) { var previous = element as Button; if (previous != null) buttons.Remove(previous); } activities.Children.Clear(); activityButton.Content = rows == null || rows.Length == 0 ? "动态" : "动态 " + rows.Length;
+        lastRows = rowsKey; foreach (var element in activities.Children) { var previous = element as Button; if (previous != null) buttons.Remove(previous); } activities.Children.Clear(); var activityLabel = (TextBlock)((StackPanel)activityButton.Content).Children[1]; activityLabel.Text = rows.Length == 0 ? "动态" : "动态 " + rows.Length; AutomationProperties.SetName(activityButton, activityLabel.Text);
         if (rows == null || rows.Length == 0) activities.Children.Add(new TextBlock { Text = "暂时没有需要关注的任务。", Foreground = fg, FontSize = 12, Margin = new Thickness(3, 5, 3, 5) });
-        else foreach (var item in rows) { var task = item as Dictionary<string, object>; if (task == null) continue; string sessionId = Str(task, "id"); var button = MakeButton(Str(task, "title") + "\n" + Str(task, "label"), delegate { activity.IsOpen = false; OpenHarness(); NativeApp.Emit(new { type = "open-session", sessionId = sessionId }); }); button.Foreground = fg; button.Background = bg; button.HorizontalContentAlignment = HorizontalAlignment.Left; activities.Children.Add(button); }
+        else foreach (var item in rows) { var task = item as Dictionary<string, object>; if (task == null) continue; string sessionId = Str(task, "id"); var button = MakeButton(Str(task, "title") + "\n" + Str(task, "label"), delegate { activity.IsOpen = false; OpenHarness(); NativeApp.Emit(new { type = "open-session", sessionId = sessionId }); }); PaintButton(button, false); button.HorizontalContentAlignment = HorizontalAlignment.Left; activities.Children.Add(button); }
       }
       bool desktop = Str(preferences, "surface", "desktop") == "desktop"; SetHotkey(desktop);
       if (desktop && Bool(preferences, "visible", true)) { if (!IsVisible) Show(); } else { chat.IsOpen = false; activity.IsOpen = false; Hide(); }

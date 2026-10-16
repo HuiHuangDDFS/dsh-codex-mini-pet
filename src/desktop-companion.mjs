@@ -67,7 +67,7 @@ export class DesktopCompanion {
         this.send({ type: 'atlas', base64: png.toString('base64') }); this.imageKey = key;
       }
       const value = {
-        type: 'state', preferences: state.preferences, name: pet.name,
+        type: 'state', preferences: { ...state.preferences, reducedMotion: Boolean(state.preferences.reducedMotion || this.facts.osReduced) }, name: pet.name,
         label: this.facts.presentation?.label || '随时准备好', rows: (this.facts.rows || []).slice(0, 30),
         context: this.facts.context || {}, theme: this.facts.theme || {},
       };
@@ -78,12 +78,13 @@ export class DesktopCompanion {
   draw() {
     if (!this.active || !this.preferences) return;
     const base = this.facts.presentation?.animation || 'idle';
-    const next = Date.now() < (this.interactionUntil || 0) ? this.interaction : this.hover && base === 'idle' ? 'jumping' : base;
+    const next = this.dragging ? this.dragDirection : Date.now() < (this.interactionUntil || 0) ? this.interaction : base;
     if (this.animation !== next) { this.animation = next; this.started = Date.now(); }
     const frame = frameFor(next, Date.now() - this.started, {
       reducedMotion: Boolean(this.preferences.reducedMotion || this.facts.osReduced),
-      gaze: this.preferences.followPointer === false || Date.now() < (this.interactionUntil || 0) ? null : this.gaze,
+      gaze: this.dragging || this.preferences.followPointer === false || Date.now() < (this.interactionUntil || 0) ? null : this.gaze,
       version: this.imageVersion || 2,
+      loop: Boolean(this.dragging),
     });
     const key = `${frame.row}:${frame.column}`;
     if (key !== this.previousFrame) { this.send({ type: 'frame', row: frame.row, column: frame.column }); this.previousFrame = key; }
@@ -94,6 +95,12 @@ export class DesktopCompanion {
     if (message.type === 'hotkey') { this.hotkey = message.registered === true; return; }
     if (message.type === 'gaze') { this.gaze = Number.isInteger(message.direction) && message.direction >= 0 && message.direction < 16 ? message.direction : null; return; }
     if (message.type === 'hover') { this.hover = message.value === true; return; }
+    if (message.type === 'drag') {
+      this.dragging = message.active === true;
+      this.dragDirection = message.direction === 'left' ? 'running-left' : 'running-right';
+      if (this.dragging) { this.interactionUntil = 0; this.gaze = null; }
+      this.draw(); return;
+    }
     if (message.type === 'greet') { this.interaction = 'waving'; this.interactionUntil = Date.now() + 2100; return; }
     if (message.type === 'position' && Number.isFinite(message.x) && Number.isFinite(message.y)) { this.store.preferences({ desktopPosition: { x: message.x, y: message.y } }).catch(error => { this.error = error.message; }); return; }
     if (message.type === 'preferences') {

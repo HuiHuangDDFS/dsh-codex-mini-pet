@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-0.3.2.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+桌面版在“设置 → 插件管理器”中安装生成的本地 `dsh-hide-pet-1.0.0.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 
@@ -57,3 +57,5 @@ node src/cli.mjs preview
 用户范围可放入 `$DSH_HOME/skills/dsh-hide-pet`，默认是 `~/.dsh/skills/dsh-hide-pet`；另一个用户搜索根为 `$DSH_AGENTS_HOME/skills`，默认 `~/.agents/skills`。以宿主的技能发现结果确认已加载。
 
 该 skill 优先使用宿主工具，缺少工具时可使用已安装的同名命令行。它不要求 ChatGPT Library、Pets MCP 或云端上传会话。
+
+1.0 操作栏常驻，不需要悬停才能点击；宠物形象与聊天/动态分别处理输入。桌面拖动使用鼠标捕获，按移动方向循环播放左右跑动，松开后恢复真实任务状态；减少动态效果仍保留静态姿态。

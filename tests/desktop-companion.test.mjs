@@ -62,3 +62,24 @@ test('desktop PNG normalization retains existing atlas pixels without changing b
  const png=await fs.readFile(new URL('../assets/pets/zhiyu/spritesheet.png',import.meta.url));
  assert.deepEqual(await desktopPng(png),png);
 });
+
+test('captured drag takes priority over gaze and task state, loops, reverses and releases', () => {
+  const d = new DesktopCompanion({}, {enabled:false});
+  d.active=true;d.preferences={followPointer:true};d.imageVersion=2;
+  d.facts={presentation:{animation:'waiting'}};d.gaze=4;
+  const frames=[];d.send=value=>frames.push(value);
+  d.onNative({type:'greet'});
+  d.onNative({type:'drag',active:true,direction:'right'});
+  assert.equal(frames.at(-1).row,1);
+  d.started=Date.now()-10000;d.previousFrame=null;d.draw();
+  assert.equal(frames.at(-1).row,1,'sustained drag must not fall back to idle after three cycles');
+  d.onNative({type:'drag',active:true,direction:'left'});
+  assert.equal(frames.at(-1).row,2);
+  d.preferences.reducedMotion=true;d.previousFrame=null;d.draw();
+  assert.equal(frames.at(-1).row,2);assert.equal(frames.at(-1).column,0);
+  d.onNative({type:'drag',active:false,direction:'left'});
+  assert.equal(frames.at(-1).row,6,'release restores the real waiting state');
+  d.facts={presentation:{animation:'idle'}};d.hover=true;d.previousFrame=null;d.draw();
+  assert.equal(frames.at(-1).row,0,'hover must not cause endless jumping');
+  d.dispose();
+});

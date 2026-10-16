@@ -10,7 +10,7 @@
 
 安装、命令行和本地宠物包格式见 [使用说明](docs/usage.md)。Node.js 22.19+ 环境可先运行：
 
-桌面版请使用 **0.2.1 或更新版本**。0.2.0 的默认快捷键与桌面内置命令冲突，可能导致启动失败；0.2.1 已修正按键并为可选快捷键增加降级处理。
+当前稳定版为 **1.0.0**。Windows 桌面版提供常驻底栏与独立置顶宠物，修复操作栏无法点击、拖动动画丢失和原生按钮文字不可见。
 
 ```sh
 npm ci
@@ -30,3 +30,5 @@ Windows 桌面模式提供全局 Ctrl+Alt+Shift+P 快速聊天，可在“外观
 适配基线为本机安装的 DeepSeek Harness `0.2.0-rc.2`，对应提交 `04f392c9ddd144fa426da2045178797da6db6c11`。宿主 `master` 已存在不同版本；其他版本需要按实际扩展接口验证。完整的自动检查和实机检查状态见 [功能对齐说明](docs/feature-parity.md)。
 
 仓库：[HuiHuangDDFS/dsh-hide-pet](https://github.com/HuiHuangDDFS/dsh-hide-pet)。
+
+Windows 上可运行 `npm run test:native` 验证真实鼠标跨区点击、按钮文字、双向跑动帧、动态跳转及窗口生命周期；该检查会短暂移动鼠标并显示测试宠物。
