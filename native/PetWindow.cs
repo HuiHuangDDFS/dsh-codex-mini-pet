@@ -230,7 +230,7 @@ namespace DshPet {
         int owner; bool minimized = false; if (Int32.TryParse(Environment.GetEnvironmentVariable("DSH_PET_OWNER_PID"), out owner)) { try { minimized = IsIconic(Process.GetProcessById(owner).MainWindowHandle); } catch { } }
         string capture = Str(message, "capturePath");
         if (!String.IsNullOrEmpty(capture)) { var bitmap = new RenderTargetBitmap((int)Math.Ceiling(ActualWidth), (int)Math.Ceiling(ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(this); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using (var output = File.Create(capture)) encoder.Save(output); }
-        NativeApp.Emit(new { type = "inspection", visible = IsVisible, topmost = Topmost, extendedStyle = GetWindowLongPtr(handle, -20).ToInt64(), ownerMinimized = minimized, left = Left, top = Top, name = currentName, frameCount = frames.Length, chatOpen = chat.IsOpen, inputFocused = prompt.IsKeyboardFocused }); return;
+        NativeApp.Emit(new { type = "inspection", visible = IsVisible, topmost = Topmost, extendedStyle = GetWindowLongPtr(handle, -20).ToInt64(), ownerMinimized = minimized, left = Left, top = Top, name = currentName, frameCount = frames.Length, chatOpen = chat.IsOpen, inputFocused = prompt.IsKeyboardFocused, activityCount = activities.Children.Count }); return;
       }
       if (type != "state") return;
       preferences = Obj(message, "preferences"); context = Obj(message, "context"); currentName = Str(message, "name");
@@ -240,7 +240,9 @@ namespace DshPet {
       sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(132, sprite.Width + 8);
       ApplyTheme(Obj(message, "theme"));
       string path = Str(context, "currentWorkspacePath"); workspace.Text = String.IsNullOrEmpty(path) ? "新会话 · 请先在 Harness 选择工作区" : "新会话 · " + System.IO.Path.GetFileName(path.TrimEnd('\\', '/'));
-      var rows = Get(message, "rows") as object[]; string rowsKey = NativeApp.Json.Serialize(rows);
+      var rowList = new List<object>(); var incomingRows = Get(message, "rows") as IEnumerable;
+      if (incomingRows != null) foreach (var value in incomingRows) rowList.Add(value);
+      var rows = rowList.ToArray(); string rowsKey = NativeApp.Json.Serialize(rows);
       if (rowsKey != lastRows) {
         lastRows = rowsKey; foreach (var element in activities.Children) { var previous = element as Button; if (previous != null) buttons.Remove(previous); } activities.Children.Clear(); activityButton.Content = rows == null || rows.Length == 0 ? "动态" : "动态 " + rows.Length;
         if (rows == null || rows.Length == 0) activities.Children.Add(new TextBlock { Text = "暂时没有需要关注的任务。", Foreground = fg, FontSize = 12, Margin = new Thickness(3, 5, 3, 5) });
