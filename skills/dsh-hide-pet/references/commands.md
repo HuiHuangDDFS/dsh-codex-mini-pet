@@ -47,6 +47,6 @@ dsh-hide-pet preview --file <图集路径> --port 5058
 
 导入时会校验图集并创建新的稳定 ID，不能用包里的旧 ID 直接覆盖现有宠物。导入不会自动选择；要启用时继续调用 `select`，选中时会退出精简模式。替换现有自定义图集前先导出备份，再使用 `replace`，可从 v1 升级为 v2，原 ID、名称、描述及全部显示偏好保持不变。校验失败不改变已安装图集。内置图集不可替换。
 
-`reset --scope size|position|all` 分别重置大小、位置或全部显示偏好；只有 `all` 会恢复默认选择。`visibilityBehavior` 为 `always` 或 `on-demand`，后者在点击伙伴和设置窗口以外区域时收起；`visible` 控制整个伙伴，`mode` 为 `pet` 或 `mini`。界面管理入口是“设置 → 宠物伙伴”，应用内 Ctrl+Alt+P 唤出聊天（macOS 对应主修饰键+Option+P）。
+`reset --scope size|position|all` 分别重置大小、位置或全部显示偏好；只有 `all` 会恢复默认选择。`visibilityBehavior` 为 `always` 或 `on-demand`，后者在点击伙伴和设置窗口以外区域时收起；`visible` 控制整个伙伴，`mode` 为 `pet` 或 `mini`。界面管理入口是“设置 → 宠物伙伴”（桌面版先打开左下角“更多”），应用内 Ctrl+Alt+Shift+P 唤出聊天（macOS 对应 Command+Option+Shift+P）。若宿主仍有默认按键冲突，命令保留为未绑定项，可在快捷键设置中分配，宠物本身继续运行。
 
 读取命令返回的实际 ID、偏好和输出路径后再报告成功。导出包含角色元数据和图集，可用于本地备份与迁移；目标 ZIP 必须尚不存在，命令不会覆盖原文件。不包含云端账户或跨设备同步服务。

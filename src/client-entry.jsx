@@ -3,6 +3,7 @@ import { ANIMATIONS, CELL, activityRows, clampPosition, frameFor, gazeForPoint, 
 import { combineSessionSources, sessionActivitySource } from './activity-source.mjs';
 import { createHarnessActions } from './harness-actions.mjs';
 import { PetDock, dockCss } from './pet-dock.jsx';
+import { registerPetShortcut } from './shortcuts.mjs';
 
 export const inject = ['slots', 'uiSession', 'sessions', 'uiWorkspace', 'workspaces', 'conversation', 'remote', 'shortcuts'];
 
@@ -420,7 +421,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
           <label className="dhp-toggle"><div>目光跟随指针<p>闲暇时朝你的鼠标方向望一望。</p></div><input type="checkbox" checked={prefs.followPointer !== false} disabled={busy || Number(pet?.spriteVersion) === 1} onChange={event => preferences({ followPointer: event.target.checked })} /></label>
           <label className="dhp-toggle"><div>减少动态效果<p>{osReduced ? '系统已启用减少动态效果。' : '保留静态姿态，减少循环动作。'}</p></div><input type="checkbox" checked={Boolean(prefs.reducedMotion)} disabled={busy} onChange={event => preferences({ reducedMotion: event.target.checked })} /></label>
           <div className="dhp-actions" style={{ marginTop: 18 }}><button className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'position' })}>重置位置</button><button className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'size' })}>重置大小</button></div>
-          <p className="dhp-footer">偏好保存在本机。Ctrl+Alt+P 在 Harness 窗口内唤出快速聊天；系统级悬浮窗和全局热键需要宿主支持。</p>
+          <p className="dhp-footer">偏好保存在本机。Ctrl+Alt+Shift+P 在 Harness 窗口内唤出快速聊天（可在快捷键设置中调整）；系统级悬浮窗和全局热键需要宿主支持。</p>
         </>}
         {ready && tab === 'import' && <>
           <div className="dhp-upload"><strong>让新伙伴加入</strong><p>导入宠物 ZIP 包，或透明 PNG / WebP 动作图。<br />v2：1536 × 2288 · 9 组动作 + 16 个目光方向</p><button className="dhp-button" disabled={busy} onClick={() => fileInput.current?.click()}>选择文件</button><input ref={fileInput} type="file" hidden accept=".zip,.png,.webp,application/zip,image/png,image/webp" onChange={event => { setUpload(event.target.files?.[0] || null); setMessage(null); event.target.value = ''; }} />{upload && <div className="dhp-file">{upload.name} · {(upload.size / 1024 / 1024).toFixed(2)} MB</div>}</div>
@@ -436,11 +437,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
 export function apply(ctx) {
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-hide-pet', order: 90 }, () => <PetApp ctx={ctx} />));
   ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-hide-pet', order: 40, label: () => '宠物伙伴' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
-  if (ctx.shortcuts?.register) ctx.effect(() => ctx.shortcuts.register({
-    id: 'dsh-hide-pet.quick-chat', label: () => '宠物：快速聊天', aliases: ['pet', '伙伴'],
-    defaults: Object.fromEntries(['desktop:windows', 'desktop:linux', 'desktop:macos', 'web:windows', 'web:macos'].map(platform => [platform, { code: 'KeyP', modifiers: ['primary', 'alt'] }])),
-    regions: ['page', 'editable'], modals: [], resolve: () => ({ status: 'handled', run: () => {
+  ctx.effect(() => registerPetShortcut(ctx.shortcuts, () => {
       apiRequest('action', { action: 'preferences', patch: { visible: true } }).then(() => { window.dispatchEvent(new Event('dhp-state-change')); window.dispatchEvent(new Event('dhp-focus-chat')); }).catch(() => {});
-    } }),
   }));
 }
