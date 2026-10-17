@@ -101,11 +101,11 @@
 
 ## 安装
 
-当前版本为 **2.0.0**，适配 DeepSeek Harness **0.2.0-rc.2**。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
+当前版本为 **2.0.1**，适配 DeepSeek Harness **0.2.0-rc.2**。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.0.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.0/dsh-codex-mini-pet-2.0.0.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.1.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.1/dsh-codex-mini-pet-2.0.1.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
@@ -117,7 +117,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-codex-mini-pet-2.0.0.tgz`。固定版本源码可从 [v2.0.0 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.0) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-codex-mini-pet-2.0.1.tgz`。固定版本源码可从 [v2.0.1 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.1) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -129,7 +129,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.0.tgz).Path
+$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.1.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -138,7 +138,7 @@ $petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.0.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.0.tgz
+dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.1.tgz
 ```
 
 将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。
