@@ -12,7 +12,7 @@ export async function run(argv = process.argv.slice(2)) {
   const [command = 'help', id, destination] = positionals;
   const store = new PetStore(values['data-dir']); let result;
   const boolean = value => { if (!['true', 'false'].includes(value)) throw new Error('布尔值仅接受 true 或 false。'); return value === 'true'; };
-  if (values.help || command === 'help') return { usage: 'dsh-hide-pet <list|select ID|import DIR_OR_ZIP|export ID ZIP|validate --file IMAGE|update ID --name NAME|replace ID --file IMAGE|delete ID|preferences [--mode pet|mini]|reset --scope size|position|all|preview> [--data-dir DIR] [--json]' };
+  if (values.help || command === 'help') return { usage: 'dsh-codex-mini-pet <list|select ID|import DIR_OR_ZIP|export ID ZIP|validate --file IMAGE|update ID --name NAME|replace ID --file IMAGE|delete ID|preferences [--mode pet|mini]|reset --scope size|position|all|preview> [--data-dir DIR] [--json]' };
   if (command === 'list') result = await store.snapshot();
   else if (command === 'select') result = await store.select(id);
   else if (command === 'validate') { result = await validateAtlas(await fs.readFile(values.file ?? id)); if (!result.ok) process.exitCode = 1; }

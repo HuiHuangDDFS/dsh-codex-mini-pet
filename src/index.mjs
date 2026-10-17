@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs';
 import { validateAtlas } from './atlas.mjs';
 import { DesktopCompanion } from './desktop-companion.mjs';
 
-export const name = 'dsh-hide-pet';
+export const name = 'dsh-codex-mini-pet';
 export const inject = ['webServer', 'connection', 'tools', 'commands'];
 const object = (properties = {}, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const string = description => ({ type: 'string', description });
@@ -29,7 +29,7 @@ export function apply(ctx, config = {}) {
   register('pet_set_preferences', '设置界面语言（zh-CN / en）、显示、宠物或精简模式、按需显示、缩放、鼠标跟随和减少动态效果。', object({ language: { type: 'string', enum: ['zh-CN', 'en'] }, surface: { type: 'string', enum: ['desktop', 'app'] }, visible: { type: 'boolean' }, mode: { type: 'string', enum: ['pet', 'mini'] }, visibilityBehavior: { type: 'string', enum: ['always', 'on-demand'] }, scale: { type: 'number' }, reducedMotion: { type: 'boolean' }, followPointer: { type: 'boolean' } }), args => store.preferences(args));
   register('pet_reset_preferences', '重置宠物大小、位置或全部显示偏好。只重置大小或位置时保留已选宠物。', object({ scope: { type: 'string', enum: ['size', 'position', 'all'] } }, ['scope']), args => store.resetPreferences(args.scope));
   ctx.effect(() => ctx.commands.register({
-    name: 'pet', description: '显示、隐藏、精简、列出或选择动画宠物；在设置 › 宠物伙伴管理', input: { hint: 'show | hide | mini | list | select <id> | reset [size|position|all]' },
+    name: 'pet', description: '显示、隐藏、精简、列出或选择动画宠物；在设置 › codex-mini-pet管理', input: { hint: 'show | hide | mini | list | select <id> | reset [size|position|all]' },
     handler: async invocation => {
       try {
         const [verb = 'toggle', id] = (invocation.rawInput || '').trim().split(/\s+/).filter(Boolean);
@@ -38,7 +38,7 @@ export function apply(ctx, config = {}) {
         else if (verb === 'reset') await store.resetPreferences(id || 'all');
         else if (verb === 'list') return { kind: 'success', text: (await store.list()).map(p => `${p.id}: ${p.name}`).join('\n') };
         else if (['show', 'hide', 'toggle'].includes(verb)) await store.preferences({ visible: verb === 'toggle' ? !(await store.snapshot()).preferences.visible : verb === 'show' });
-        else throw new Error('用法：/pet [show | hide | mini | list | select <id> | reset [size|position|all]]；管理入口：设置 › 宠物伙伴');
+        else throw new Error('用法：/pet [show | hide | mini | list | select <id> | reset [size|position|all]]；管理入口：设置 › codex-mini-pet');
         return { kind: 'success', text: '宠物设置已更新。' };
       } catch (e) { return { kind: 'error', text: e.message }; }
     },

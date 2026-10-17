@@ -255,7 +255,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
               const entry = ctx.slots.entries('sidebar.settings').find(item => item.options?.store?.create);
               const actions = entry?.options?.store?.create()?.actions;
               if (!actions?.openSection) throw new Error(t('请从更多 → 设置打开宠物伙伴。'));
-              actions.openSection('dsh-hide-pet');
+              actions.openSection('dsh-codex-mini-pet');
             }
             replies.push({ id: event.id, kind: event.type, ok: true, ...(event.type === 'edit-chat' ? { message: t('已转入主会话草稿，由你发送') } : {}) });
           } catch (error) { replies.push({ id: event.id, kind: event.type, ok: false, error: error.message }); }
@@ -479,7 +479,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
             <div className="dhp-actions"><UiButton className="dhp-button primary" disabled={busy} onClick={() => preferences({ visible: !visible })}>{visible ? t('收起伙伴') : t('唤出伙伴')}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={exportPet}>{t("导出 ZIP")}</UiButton>
               {!pet.builtin && <><UiButton className="dhp-button" disabled={busy || !rename.trim() || (rename === pet.name && description === pet.description)} onClick={() => perform('update', { id: pet.id, patch: { name: rename.trim(), description } }, t('伙伴信息已更新'))}>{t("保存信息")}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={() => replacementInput.current?.click()}>{t("替换图集")}</UiButton><input ref={replacementInput} type="file" accept=".png,.webp" hidden onChange={event => { replacePet(event.target.files?.[0]); event.target.value = ''; }} /><UiButton className="dhp-button danger" disabled={busy} onClick={() => confirmDelete ? perform('delete', { id: pet.id }, t('已移出宠物库')) : setConfirmDelete(true)}>{confirmDelete ? t('确认删除此伙伴') : t('删除')}</UiButton>{confirmDelete && <UiButton className="dhp-button" onClick={() => setConfirmDelete(false)}>{t("取消")}</UiButton>}</>}
             </div></div></details>}
-          <div className="dhp-actions" style={{ marginTop: 16 }}>{pet && !pet.builtin && Number(pet.spriteVersion) === 1 && <UiButton className="dhp-button" disabled={busy || !native.getContext().currentWorkspaceId} onClick={() => nativePrompt(`请使用 dsh-hide-pet 技能将现有自定义宠物 ${pet.id}（${pet.name}）升级为 v2。先导出备份，保留角色、九类动作和原 ID，增加十六方向注视，校验及动画预览通过后用 pet_replace 替换图集；不要用重新导入来代替更新。`)}>{t("升级为 v2…")}</UiButton>}</div>
+          <div className="dhp-actions" style={{ marginTop: 16 }}>{pet && !pet.builtin && Number(pet.spriteVersion) === 1 && <UiButton className="dhp-button" disabled={busy || !native.getContext().currentWorkspaceId} onClick={() => nativePrompt(`请使用 dsh-codex-mini-pet 技能将现有自定义宠物 ${pet.id}（${pet.name}）升级为 v2。先导出备份，保留角色、九类动作和原 ID，增加十六方向注视，校验及动画预览通过后用 pet_replace 替换图集；不要用重新导入来代替更新。`)}>{t("升级为 v2…")}</UiButton>}</div>
           <p className="dhp-footer">{t("拖动时左右跑动 · 点击打招呼 · 在操作栏聊天或查看动态")}</p>
         </>}
         {ready && tab === 'motion' && <>
@@ -514,8 +514,8 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
 
 export function apply(ctx) {
   setNativeUi(nativeKit);
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-hide-pet', order: 90 }, () => <PetApp ctx={ctx} />));
-  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-hide-pet', order: 40, label: () => 'codex-mini-pet' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-codex-mini-pet', order: 90 }, () => <PetApp ctx={ctx} />));
+  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-codex-mini-pet', order: 40, label: () => 'codex-mini-pet' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
   ctx.effect(() => registerPetShortcut(ctx.shortcuts, () => {
       apiRequest('action', { action: 'preferences', patch: { visible: true } }).then(() => { window.dispatchEvent(new Event('dhp-state-change')); window.dispatchEvent(new Event('dhp-focus-chat')); }).catch(() => {});
   }));

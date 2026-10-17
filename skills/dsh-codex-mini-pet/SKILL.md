@@ -1,17 +1,17 @@
 ---
-name: dsh-hide-pet
-description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改或删除动画宠物，并调整显示偏好。用于 dsh-hide-pet 插件；不处理真实动物或其他应用的宠物。
+name: dsh-codex-mini-pet
+description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改或删除动画宠物，并调整显示偏好。用于 dsh-codex-mini-pet 插件；不处理真实动物或其他应用的宠物。
 ---
 
 # DeepSeek Harness 动画宠物
 
-使用本地 `dsh-hide-pet` 插件完成宠物管理。保留用户指定的形象、名称、描述和是否启用的意图。宠物以持久化 ID 标识，名称、文件路径和预览地址都不是 ID。
+使用本地 `dsh-codex-mini-pet` 插件完成宠物管理。保留用户指定的形象、名称、描述和是否启用的意图。宠物以持久化 ID 标识，名称、文件路径和预览地址都不是 ID。
 
 ## 选择调用方式
 
-优先使用宿主提供的 `pet_list`、`pet_select`、`pet_update`、`pet_replace`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`、`pet_reset_preferences` 工具；以当前工具定义为准。没有可用工具时，使用已安装的 `dsh-hide-pet` 命令行，先读 `--help`。需要命令参数和本地包格式时读 [references/commands.md](references/commands.md)。
+优先使用宿主提供的 `pet_list`、`pet_select`、`pet_update`、`pet_replace`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`、`pet_reset_preferences` 工具；以当前工具定义为准。没有可用工具时，使用已安装的 `dsh-codex-mini-pet` 命令行，先读 `--help`。需要命令参数和本地包格式时读 [references/commands.md](references/commands.md)。
 
-在本项目源码目录工作而命令尚未加入 PATH 时，可用 `node src/cli.mjs --help`，后续把命令中的 `dsh-hide-pet` 替换为 `node src/cli.mjs`。先确认实际项目目录与依赖已安装；不要把 PATH 中缺少命令直接判断为插件不可用。需要复制内置角色时，导入对应 `assets/pets/<id>` 目录会创建独立自定义 ID，再按要求改名、选择或导出；不会改动内置图集。
+在本项目源码目录工作而命令尚未加入 PATH 时，可用 `node src/cli.mjs --help`，后续把命令中的 `dsh-codex-mini-pet` 替换为 `node src/cli.mjs`。先确认实际项目目录与依赖已安装；不要把 PATH 中缺少命令直接判断为插件不可用。需要复制内置角色时，导入对应 `assets/pets/<id>` 目录会创建独立自定义 ID，再按要求改名、选择或导出；不会改动内置图集。
 
 工具和命令操作的是本地宠物库，不需要 ChatGPT Library、Pets MCP、云端上传会话或 OpenAI 账户。不要为管理宠物另建这些依赖，也不要修改 DeepSeek Harness 的安装包。
 
@@ -32,7 +32,7 @@ description: 在 DeepSeek Harness 中创建、导入、预览、选择、修改�
 1. 将角色要求、参考图、源帧、最终图集和检查结果保存在当前工作目录的独立子目录。已有形象时保留它的脸型、比例、配色、材质、装饰和道具。
 2. 新图集优先采用 v2。先确定统一角色基准，再分别准备九种动画状态；最后生成四个正方向锚点和两行连贯的注视姿态。使用环境可用的图像生成或用户指定的绘制方法；生成不可用时说明缺失，不用假图片冒充已完成的角色。
 3. 透明背景、裁切、共享缩放、排版和编码可以确定性处理。所有帧使用一致尺度和站立基线；保留跳跃本身的垂直位移。不要把每帧分别放大到格子边缘。
-4. 用 `pet_validate` 或 `dsh-hide-pet validate --file <图集>` 检查最终文件。任何重新编码或画面修改后重新校验。结构校验成功只证明该检查覆盖的格式要求；还要观看实际动画并检查角色一致性、动作语义、裁切、抖动和注视方向。
+4. 用 `pet_validate` 或 `dsh-codex-mini-pet validate --file <图集>` 检查最终文件。任何重新编码或画面修改后重新校验。结构校验成功只证明该检查覆盖的格式要求；还要观看实际动画并检查角色一致性、动作语义、裁切、抖动和注视方向。
 5. 从最终图集制作并展示预览。单张静态图不能证明动作连贯。修复最小的失败源行，重新组装和复验，不只修预览。
 6. 新宠物按 [references/commands.md](references/commands.md) 的本地包格式导入，核对返回的持久化 ID。只有用户要求启用时才选择该 ID。替换或升级现有自定义宠物时先导出备份，然后用 `pet_replace` 或 `replace <id> --file <图集>`，再次读取确认原 ID、名称和偏好保持不变；重新导入会生成新 ID。内置宠物需要先复制为自定义项。
 

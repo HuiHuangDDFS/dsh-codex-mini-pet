@@ -1,23 +1,23 @@
 # 本地命令与数据
 
-先用 `dsh-hide-pet --help` 确认所安装版本的参数。以下命令与宿主的 `pet_*` 工具共享数据层。
+先用 `dsh-codex-mini-pet --help` 确认所安装版本的参数。以下命令与宿主的 `pet_*` 工具共享数据层。
 
 ```text
-dsh-hide-pet list
-dsh-hide-pet select <id>
-dsh-hide-pet update <id> --name <名称> --description <描述>
-dsh-hide-pet replace <id> --file <新图集路径>
-dsh-hide-pet delete <id>
-dsh-hide-pet validate --file <图集路径>
-dsh-hide-pet import <宠物包目录或ZIP>
-dsh-hide-pet export <id> <新ZIP文件路径>
-dsh-hide-pet preferences --visible true --scale 0.72 --reduced-motion false
-dsh-hide-pet preferences --follow-pointer true
-dsh-hide-pet preferences --mode mini --visibility-behavior on-demand
-dsh-hide-pet reset --scope size
-dsh-hide-pet reset --scope position
-dsh-hide-pet preview <id>
-dsh-hide-pet preview --file <图集路径> --port 5058
+dsh-codex-mini-pet list
+dsh-codex-mini-pet select <id>
+dsh-codex-mini-pet update <id> --name <名称> --description <描述>
+dsh-codex-mini-pet replace <id> --file <新图集路径>
+dsh-codex-mini-pet delete <id>
+dsh-codex-mini-pet validate --file <图集路径>
+dsh-codex-mini-pet import <宠物包目录或ZIP>
+dsh-codex-mini-pet export <id> <新ZIP文件路径>
+dsh-codex-mini-pet preferences --visible true --scale 0.72 --reduced-motion false
+dsh-codex-mini-pet preferences --follow-pointer true
+dsh-codex-mini-pet preferences --mode mini --visibility-behavior on-demand
+dsh-codex-mini-pet reset --scope size
+dsh-codex-mini-pet reset --scope position
+dsh-codex-mini-pet preview <id>
+dsh-codex-mini-pet preview --file <图集路径> --port 5058
 ```
 
 命令默认输出 JSON，接受 `--json`。错误包含实际原因并使用非零退出码；校验图集时还要确认返回的 `ok: true`。

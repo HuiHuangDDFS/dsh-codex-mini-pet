@@ -1,6 +1,6 @@
 # 使用说明
 
-插件提供 DeepSeek Harness 工具和独立命令行 `dsh-hide-pet`。
+插件提供 DeepSeek Harness 工具和独立命令行 `dsh-codex-mini-pet`。
 
 ## 构建与安装
 
@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-hide-pet-1.2.5.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-codex-mini-pet-1.3.2.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 
@@ -28,7 +28,7 @@ node src/cli.mjs list
 node src/cli.mjs preview
 ```
 
-安装后的命令名为 `dsh-hide-pet`。完整命令、偏好参数、默认数据目录和 `pet.json` 包格式集中在 [命令参考](../skills/dsh-hide-pet/references/commands.md)；图集要求见 [格式说明](../skills/dsh-hide-pet/references/atlas.md)。所有普通命令默认返回 JSON，`preview` 会持续运行本地服务。
+安装后的命令名为 `dsh-codex-mini-pet`。完整命令、偏好参数、默认数据目录和 `pet.json` 包格式集中在 [命令参考](../skills/dsh-codex-mini-pet/references/commands.md)；图集要求见 [格式说明](../skills/dsh-codex-mini-pet/references/atlas.md)。所有普通命令默认返回 JSON，`preview` 会持续运行本地服务。
 
 可使用 `--data-dir <目录>` 隔离试验宠物库。导入会产生新 ID；修改名称不会更改 ID。导出为 ZIP 且不覆盖已有文件，适合本地备份和迁移。
 
@@ -52,9 +52,9 @@ node src/cli.mjs preview
 
 ## skill
 
-仓库的 `skills/dsh-hide-pet` 是可独立安装的技能目录。项目范围安装时，将它复制到目标项目的 `.dsh/skills/dsh-hide-pet` 或 `.agents/skills/dsh-hide-pet`。本机适配版本以当前目录最近的 Git 项目根为搜索根，没有 Git 时使用当前目录；不会逐层扫描每个父目录。
+仓库的 `skills/dsh-codex-mini-pet` 是可独立安装的技能目录。项目范围安装时，将它复制到目标项目的 `.dsh/skills/dsh-codex-mini-pet` 或 `.agents/skills/dsh-codex-mini-pet`。本机适配版本以当前目录最近的 Git 项目根为搜索根，没有 Git 时使用当前目录；不会逐层扫描每个父目录。
 
-用户范围可放入 `$DSH_HOME/skills/dsh-hide-pet`，默认是 `~/.dsh/skills/dsh-hide-pet`；另一个用户搜索根为 `$DSH_AGENTS_HOME/skills`，默认 `~/.agents/skills`。以宿主的技能发现结果确认已加载。
+用户范围可放入 `$DSH_HOME/skills/dsh-codex-mini-pet`，默认是 `~/.dsh/skills/dsh-codex-mini-pet`；另一个用户搜索根为 `$DSH_AGENTS_HOME/skills`，默认 `~/.agents/skills`。以宿主的技能发现结果确认已加载。
 
 该 skill 优先使用宿主工具，缺少工具时可使用已安装的同名命令行。它不要求 ChatGPT Library、Pets MCP 或云端上传会话。
 
@@ -67,6 +67,6 @@ node src/cli.mjs preview
 
 设置首页按「Mini 与虚拟宠物」组织：顶部预览与显示开关，下方卡片切换伙伴；选择「无」进入精简模式。「管理当前伙伴」中可导出及维护自定义形象。
 
-仓库名称为 `dsh-codex-mini-pet`，Harness 展示名称为 `codex-mini-pet`。现有安装包标识和本地数据目录继续兼容旧版，无需重新导入宠物。
+仓库名称为 `dsh-codex-mini-pet`，Harness 展示名称为 `codex-mini-pet`。安装包与技能统一使用新名称；本地数据目录继续沿用旧版，无需重新导入宠物。
 
 精简模式下，按住操作栏最左侧的「⠿」手柄拖动；聊天和动态按钮仍用于打开、收起面板。应用内也可聚焦手柄后按方向键移动，Shift 加快。

@@ -70,11 +70,11 @@
 
 ## 安装
 
-当前版本为 **1.2.5**，适配 DeepSeek Harness **0.2.0-rc.2**。独立桌面置顶功能适用于 **Windows 桌面版**；Web 及其他系统使用应用内伙伴。
+当前版本为 **1.3.2**，适配 DeepSeek Harness **0.2.0-rc.2**。独立桌面置顶功能适用于 **Windows 桌面版**；Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-hide-pet-1.2.5.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v1.2.5/dsh-hide-pet-1.2.5.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-1.3.2.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v1.3.2/dsh-codex-mini-pet-1.3.2.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
@@ -86,7 +86,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-hide-pet-1.2.5.tgz`。固定版本源码可从 [v1.2.5 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v1.2.5) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-codex-mini-pet-1.3.2.tgz`。固定版本源码可从 [v1.3.2 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v1.3.2) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -98,7 +98,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-hide-pet-1.2.5.tgz).Path
+$petPackage = (Resolve-Path .\dsh-codex-mini-pet-1.3.2.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -107,21 +107,23 @@ $petPackage = (Resolve-Path .\dsh-hide-pet-1.2.5.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.2.5.tgz
+dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-1.3.2.tgz
 ```
 
 将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。
 
 请安装打包后的 `.tgz`，不要将源码目录作为桌面 profile 的链接依赖，也不要创建 junction。插件通过宿主的 bundle 机制加载，不需要修改 `app.asar` 或覆盖 Harness 安装文件。
 
+从 **1.3.1 及更早版本**升级时，先在插件管理器卸载旧版宠物插件，再安装新名称的安装包，避免同时启用两份插件。宠物库和偏好保留，无需重新导入。
+
 ### 3. 安装配套 skill（可选）
 
-将仓库中的 [`skills/dsh-hide-pet`](skills/dsh-hide-pet/SKILL.md) 文件夹复制到以下任一位置：
+将仓库中的 [`skills/dsh-codex-mini-pet`](skills/dsh-codex-mini-pet/SKILL.md) 文件夹复制到以下任一位置：
 
 | 范围 | 位置 |
 | --- | --- |
-| 当前项目 | `<项目目录>/.dsh/skills/dsh-hide-pet` |
-| 当前用户 | `~/.dsh/skills/dsh-hide-pet`，自定义数据目录时为 `$DSH_HOME/skills/dsh-hide-pet` |
+| 当前项目 | `<项目目录>/.dsh/skills/dsh-codex-mini-pet` |
+| 当前用户 | `~/.dsh/skills/dsh-codex-mini-pet`，自定义数据目录时为 `$DSH_HOME/skills/dsh-codex-mini-pet` |
 
 重新加载技能后，以 Harness 实际发现的技能列表确认。技能用于指导角色创建、图集校验、导入和管理；图像生成仍需要当前环境提供相应能力。显示内置伙伴不需要安装 skill。
 
@@ -173,11 +175,11 @@ dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.2.5.tgz
 
 导入会创建新的宠物 ID；更新已有自定义伙伴时使用「替换图集」，保留原 ID、名称和显示偏好。导出 ZIP 可用于备份和迁移。结构校验通过后，仍需在「动作」页检查画面与播放效果。
 
-完整格式和命令见 [图集说明](skills/dsh-hide-pet/references/atlas.md) 与 [CLI 参考](skills/dsh-hide-pet/references/commands.md)。
+完整格式和命令见 [图集说明](skills/dsh-codex-mini-pet/references/atlas.md) 与 [CLI 参考](skills/dsh-codex-mini-pet/references/commands.md)。
 
 ## 常见问题
 
-**安装后设置里没有「宠物伙伴」？**
+**安装后设置里没有「codex-mini-pet」？**
 
 确认安装到了正在使用的 profile，插件已启用，且安装后重启过 Harness。只把 npm 包放入目录，不代表宿主已经激活对应 bundle。具体步骤见 [使用说明](docs/usage.md)。
 

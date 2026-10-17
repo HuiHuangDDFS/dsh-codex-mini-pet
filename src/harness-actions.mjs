@@ -37,7 +37,7 @@ export function requiresNativeComposer(text) {
 }
 
 export function createPetPrompt() {
-  return '请帮我创建一只新的 DeepSeek Harness 桌面宠物。先询问我想要的角色、风格和名字，再制作包含九类动作和十六方向注视的透明 v2 图集，逐项预览后导入 dsh-hide-pet。如果已安装 dsh-hide-pet 技能，请按该技能执行；如果尚未安装，请先说明缺少技能，不要声称已经调用。';
+  return '请帮我创建一只新的 DeepSeek Harness 桌面宠物。先询问我想要的角色、风格和名字，再制作包含九类动作和十六方向注视的透明 v2 图集，逐项预览后导入 dsh-codex-mini-pet。如果已安装 dsh-codex-mini-pet 技能，请按该技能执行；如果尚未安装，请先说明缺少技能，不要声称已经调用。';
 }
 
 export function createHarnessActions(ctx) {
