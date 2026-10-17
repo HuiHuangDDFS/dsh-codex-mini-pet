@@ -1,7 +1,7 @@
 {
   "name": "dsh-codex-mini-pet",
-  "version": "1.3.2",
-  "description": "DeepSeek Harness 的动画宠物伙伴：鲸鱼娘与智域，支持 Codex v1/v2 图集。",
+  "version": "2.0.0",
+  "description": "DeepSeek Harness 聊天 / 工作双模式与桌面宠物伙伴，内嵌 DeepSeek 官网，支持 Codex v1/v2 图集。",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -69,7 +69,10 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-session",
-        "@deepseek-ai/dsh-client-ui-settings-general"
+        "@deepseek-ai/dsh-client-ui-settings-general",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-workspace"
       ]
     }
   },

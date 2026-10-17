@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } fro
 import { ANIMATIONS, CELL, activityRows, clampPosition, frameFor, gazeForPoint, resolveAssetUrl, taskPresentation } from './client-model.mjs';
 import { bindExternalSource, combineSessionSources, sessionActivitySource } from './activity-source.mjs';
 import { createHarnessActions } from './harness-actions.mjs';
+import { applyWorkChat } from './work-chat.jsx';
 import { PetDock, dockCss } from './pet-dock.jsx';
 import { registerPetShortcut } from './shortcuts.mjs';
 import { createCompletionTracker, inwardBubblePosition } from './companion-behavior.mjs';
@@ -11,7 +12,7 @@ import { LANGUAGES, createTranslator, translate } from './i18n.mjs';
 
 const nativeKit = DSH_PET_PREVIEW ? null : require('@deepseek-ai/dsh-client-ui-primitives');
 
-export const inject = ['slots', 'uiSession', 'sessions', 'uiWorkspace', 'workspaces', 'conversation', 'remote', 'shortcuts'];
+export const inject = ['slots', 'uiSession', 'sessions', 'uiWorkspace', 'workspaces', 'conversation', 'remote', 'shortcuts', 'layout'];
 
 const EMPTY_SESSIONS = Object.freeze({ byId: {} });
 const EMPTY_STATUS = new Map();
@@ -97,6 +98,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const [state, setState] = useState({ pets: [], preferences: {} });
   const language = state.preferences?.language || 'zh-CN';
   const t = useMemo(() => createTranslator(language), [language]);
+  useEffect(() => { window.dispatchEvent(new CustomEvent('dhp-language', { detail:language })); }, [language]);
   const [ready, setReady] = useState(false);
   const open = settingsOnly;
   const [tab, setTab] = useState('library');
@@ -513,6 +515,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
 }
 
 export function apply(ctx) {
+  applyWorkChat(ctx);
   setNativeUi(nativeKit);
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-codex-mini-pet', order: 90 }, () => <PetApp ctx={ctx} />));
   ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-codex-mini-pet', order: 40, label: () => 'codex-mini-pet' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));

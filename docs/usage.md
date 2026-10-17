@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-codex-mini-pet-1.3.2.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-codex-mini-pet-2.0.0.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 
@@ -32,6 +32,16 @@ node src/cli.mjs preview
 
 可使用 `--data-dir <目录>` 隔离试验宠物库。导入会产生新 ID；修改名称不会更改 ID。导出为 ZIP 且不覆盖已有文件，适合本地备份和迁移。
 
+## 聊天 / 工作双模式
+
+2.0 在主界面顶部提供「聊天 / 工作」切换。「工作」保留 Harness 原生工作区、会话、模型和上下文；「聊天」在桌面宿主的内嵌浏览器中显示 `https://chat.deepseek.com/`。首次使用需要手动登录官网，当前不自动复用 Harness 的账号凭据；完整退出应用后可能需要重新登录。
+
+网页聊天列表位于工作区下方，提供新聊天、标题搜索、同步、重命名和删除入口。删除由官网显示确认弹窗。标题行固定在滚动区域之外，点击标题可收起 / 展开；“…”再次点击可关闭菜单。搜索范围为官网当前已加载的导航标题。
+
+切换聊天 / 工作保留网页和未发送草稿；已加载会话通过官网原有路由切换，切换期间保留左侧列表与区域高度。官网结构变化后，历史管理适配可能需要更新。
+
+伙伴旁的「聊一聊」继续向 Harness 工作会话发送消息，与官网聊天列表分别管理。官网聊天能力已在 Windows 桌面宿主验证；普通 Web profile 不具备桌面内嵌浏览器桥接能力。
+
 ## 模型工具
 
 宿主公开 `pet_list`、`pet_select`、`pet_update`、`pet_replace`、`pet_delete`、`pet_import`、`pet_export`、`pet_validate`、`pet_set_preferences`、`pet_reset_preferences`。调用参数以运行中的工具定义为准。示例请求：“列出宠物并选择智域”“把宠物缩小一点”“隐藏宠物”“导出当前宠物到指定 ZIP 文件”。
@@ -40,7 +50,7 @@ node src/cli.mjs preview
 
 ## 原生设置与日常操作
 
-桌面版打开左下角“更多 → 设置”（也可按 Ctrl+,），Web 版直接打开“设置”，再选左栏“宠物伙伴”（Agent 预设下方）。在此选择形象、导入/导出、替换自定义图集、改名与描述、查看动作和调整偏好。界面没有独立的右下角“伙伴”管理按钮。创建和旧版升级按钮会在当前工作区准备一条主会话草稿，由你发送；需要安装配套 skill。
+桌面版打开左下角“更多 → 设置”（也可按 Ctrl+,），Web 版直接打开“设置”，再选左栏“codex-mini-pet”。在此选择形象、导入/导出、替换自定义图集、改名与描述、查看动作和调整偏好。界面没有独立的右下角“伙伴”管理按钮。创建和旧版升级按钮会在当前工作区准备一条主会话草稿，由你发送；需要安装配套 skill。
 
 宠物旁“聊一聊”可在指定工作区新建会话，或向未归档会话发送完整文字。普通发送在后台完成；“在主会话编辑”会唤起 Harness 并转入原生输入栏，再添加文件、`@`、技能或其他上下文。主输入栏已有内容会保留。
 

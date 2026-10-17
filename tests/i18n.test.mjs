@@ -42,7 +42,7 @@ test('translations interpolate safely and keep unknown titles and user text inta
 test('every static browser translation and animation/status label has an English entry', async () => {
   const { ANIMATIONS, ACTIVITY_STATES } = await import('../src/client-model.mjs');
   const required = new Set([...ANIMATIONS.map(item => item.label), ...Object.values(ACTIVITY_STATES).map(item => item.label)]);
-  for (const file of ['client-entry.jsx', 'native-ui.jsx', 'pet-dock.jsx']) {
+  for (const file of ['client-entry.jsx', 'native-ui.jsx', 'pet-dock.jsx', 'work-chat.jsx']) {
     const source = await fs.readFile(new URL(`../src/${file}`, import.meta.url), 'utf8');
     for (const match of source.matchAll(/\bt\(\s*(['"])([^'"\n]+)\1/g)) required.add(match[2]);
   }
