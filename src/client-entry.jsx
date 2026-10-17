@@ -155,7 +155,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   desktopFacts.current = { presentation: { animation: presentation.animation, label: presentation.label }, rows: rows.map(({ id, title, state, label }) => ({ id, title, state, label })), completions, osReduced, context: native.getContext() };
   const pet = state.pets.find(item => item.id === prefs.selectedPetId) || state.pets[0];
   const scale = Number.isFinite(prefs.scale) ? prefs.scale : .72;
-  const size = { width: CELL.width * scale, height: CELL.height * scale };
+  const size = prefs.mode === 'mini' ? { width: language === 'en' ? 280 : 250, height: 48 } : { width: CELL.width * scale, height: CELL.height * scale };
   const reduced = Boolean(prefs.reducedMotion || osReduced);
   const visible = prefs.visible !== false;
   const mini = prefs.mode === 'mini';
@@ -291,8 +291,11 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   }, [menu]);
 
   useEffect(() => {
-    const resize = () => setPosition(previous => clampPosition(previous || stateRef.current.preferences.position,
-      { width: window.innerWidth, height: window.innerHeight }, { width: CELL.width * (stateRef.current.preferences.scale || .72), height: CELL.height * (stateRef.current.preferences.scale || .72) }));
+    const resize = () => {
+      const current = stateRef.current.preferences;
+      const bounds = current.mode === 'mini' ? { width: current.language === 'en' ? 280 : 250, height: 48 } : { width: CELL.width * (current.scale || .72), height: CELL.height * (current.scale || .72) };
+      setPosition(previous => clampPosition(previous || current.position, { width: window.innerWidth, height: window.innerHeight }, bounds));
+    };
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
@@ -379,7 +382,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (current.moved) preferences({ position: clampPosition({ x: current.start.x + event.clientX - current.x, y: current.start.y + event.clientY - current.y }, { width: window.innerWidth, height: window.innerHeight }, size) });
-    else play('waving');
+    else if (!mini) play('waving');
   };
   const importPet = async () => {
     if (!upload) return;
@@ -442,7 +445,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
       <div className="dhp-pet-bubble">{t(presentation.label)} · {pet.name}</div>
       <Sprite language={language} pet={pet} animation={actualAnimation} gaze={actualGaze} scale={scale} reducedMotion={reduced} />
     </div>}
-    {!settingsOnly && !desktopSurface && visible && <PetDock language={language} ctx={ctx} rows={rows} mini={mini} reducedMotion={reduced} focusRequest={chatFocus} petBounds={{ ...currentPosition, ...size }} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
+    {!settingsOnly && !desktopSurface && visible && <PetDock language={language} ctx={ctx} rows={rows} mini={mini} dragHandlers={{ onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: () => { drag.current = null; setDragging(false); }, onKeyDown: event => { if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return; event.preventDefault(); const step = event.shiftKey ? 20 : 5; const next = clampPosition({ x: currentPosition.x + (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0), y: currentPosition.y + (event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0) }, { width: window.innerWidth, height: window.innerHeight }, size); setPosition(next); preferences({ position: next }); } }} reducedMotion={reduced} focusRequest={chatFocus} petBounds={{ ...currentPosition, ...size }} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
     {!settingsOnly && !desktopSurface && visible && completionBubble && <aside className="dhp-completion" data-side={completionPosition.side} data-reduced={reduced} role="status" style={{ left: completionPosition.x, top: completionPosition.y }}><button aria-label={t("关闭完成提醒")} onClick={() => setCompletionBubble(null)}>×</button><strong>{t("任务完成啦")}</strong><button className="dhp-completion-open" onClick={() => { native.openSession(completionBubble.sessionId); setCompletionBubble(null); }}><span>{completionBubble.title}</span><small>{t("查看结果 ›")}</small></button></aside>}
     {menu && <div className="dhp-menu" role="menu" style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}>
       <small>{pet?.name} · {t(presentation.label)}</small>

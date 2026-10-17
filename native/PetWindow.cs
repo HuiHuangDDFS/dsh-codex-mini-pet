@@ -71,6 +71,8 @@ namespace DshPet {
     readonly Image sprite = new Image();
     readonly StackPanel stack = new StackPanel();
     readonly Grid controls = new Grid();
+    readonly TextBlock dragGrip = new TextBlock { Text = "⠿", Width = 24, Height = 36, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(3, 6, 0, 0), FontSize = 17, Background = Brushes.Transparent, Cursor = Cursors.SizeAll, Visibility = Visibility.Collapsed };
+    FrameworkElement dragSurface;
     readonly Border toolbar = new Border { CornerRadius = new CornerRadius(19), BorderThickness = new Thickness(.5), Padding = new Thickness(0), Margin = new Thickness(5, 2, 5, 6) };
     // Keep panels open without Popup's outside-click mouse capture so the pet
     // remains draggable. Their toolbar buttons, close buttons and Esc dismiss them.
@@ -157,11 +159,12 @@ namespace DshPet {
       UseLayoutRounding = true; SnapsToDevicePixels = true;
       toolbar.Effect = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 2, Opacity = .12, Color = Colors.Black };
       stack.Children.Add(sprite); statusText.Margin = new Thickness(8, 3, 8, 3); statusText.Height = Double.NaN; statusPill.Child = statusText; stack.Children.Add(statusPill);
-      controls.ColumnDefinitions.Add(new ColumnDefinition()); controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); controls.ColumnDefinitions.Add(new ColumnDefinition());
+      controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); controls.ColumnDefinitions.Add(new ColumnDefinition()); controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); controls.ColumnDefinitions.Add(new ColumnDefinition());
+      controls.Children.Add(dragGrip); dragGrip.ToolTip = "拖动移动"; AutomationProperties.SetName(dragGrip, "拖动移动");
       chatButton = MakeToolbarButton("聊一聊", "M 3,2.5 L 13,2.5 Q 14,2.5 14,3.5 L 14,10 Q 14,11 13,11 L 7,11 L 3,14 L 3,11 Q 2,11 2,10 L 2,3.5 Q 2,2.5 3,2.5", delegate { ToggleChat(); }, new CornerRadius(18.5, 0, 0, 18.5));
-      controls.Children.Add(chatButton);
+      Grid.SetColumn(chatButton, 1); controls.Children.Add(chatButton);
       activityButton = MakeToolbarButton("动态", "M 2,4 L 4,4 M 7,4 L 14,4 M 2,8 L 4,8 M 7,8 L 14,8 M 2,12 L 4,12 M 7,12 L 14,12", delegate { ToggleActivity(); }, new CornerRadius(0, 18.5, 18.5, 0));
-      var divider = new Border { Width = .5, Height = 14, Background = line, Name = "Divider", IsHitTestVisible = false }; Grid.SetColumn(divider, 1); controls.Children.Add(divider); Grid.SetColumn(activityButton, 2);
+      var divider = new Border { Width = .5, Height = 14, Background = line, Name = "Divider", IsHitTestVisible = false }; Grid.SetColumn(divider, 2); controls.Children.Add(divider); Grid.SetColumn(activityButton, 3);
       controls.Children.Add(activityButton); toolbar.Child = controls; stack.Children.Add(toolbar); Content = stack;
       sprite.HorizontalAlignment = HorizontalAlignment.Center; sprite.Stretch = Stretch.Uniform;
       RenderOptions.SetBitmapScalingMode(sprite, BitmapScalingMode.HighQuality);
@@ -224,25 +227,7 @@ namespace DshPet {
       };
       activityPanel.PreviewKeyDown += delegate(object sender, KeyEventArgs e) { if (e.Key == Key.Escape) { activity.IsOpen = false; e.Handled = true; } };
       sprite.Cursor = Cursors.Hand;
-      sprite.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e) {
-        if (!GetCursorPos(out dragStart)) return;
-        pointerDown = true; dragging = false; dragLast = dragStart; dragLeft = Left; dragTop = Top;
-        sprite.CaptureMouse(); e.Handled = true;
-      };
-      sprite.MouseMove += delegate(object sender, MouseEventArgs e) {
-        if (!pointerDown) return;
-        if (e.LeftButton != MouseButtonState.Pressed) { FinishDrag(); return; }
-        POINT current; if (!GetCursorPos(out current)) return;
-        var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
-        var delta = transform.Transform(new Vector(current.X - dragStart.X, current.Y - dragStart.Y));
-        if (!dragging && Math.Abs(delta.X) + Math.Abs(delta.Y) < 4) return;
-        string direction = current.X < dragLast.X ? "left" : current.X > dragLast.X ? "right" : dragDirection;
-        if (!dragging || direction != dragDirection) { dragDirection = direction; NativeApp.Emit(new { type = "drag", active = true, direction = direction }); }
-        dragging = true; sprite.Cursor = Cursors.SizeAll; dragLast = current;
-        Left = dragLeft + delta.X; Top = dragTop + delta.Y; e.Handled = true;
-      };
-      sprite.MouseLeftButtonUp += delegate(object sender, MouseButtonEventArgs e) { if (pointerDown) { FinishDrag(); e.Handled = true; } };
-      sprite.LostMouseCapture += delegate { if (pointerDown) FinishDrag(); };
+      AttachDrag(sprite); AttachDrag(dragGrip);
       LocationChanged += delegate { RepositionPopups(); };
       SizeChanged += delegate { RepositionPopups(); };
       MouseEnter += delegate { UpdateToolbar(); NativeApp.Emit(new { type = "hover", value = true }); };
@@ -266,11 +251,33 @@ namespace DshPet {
       foreach (var button in buttons) if (button.ToolTip is string) tooltipSources[button] = (string)button.ToolTip;
       ApplyTheme(new Dictionary<string, object>()); BuildMenu();
     }
+    void AttachDrag(FrameworkElement surface) {
+      surface.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e) {
+        if (!GetCursorPos(out dragStart)) return;
+        pointerDown = true; dragging = false; dragLast = dragStart; dragLeft = Left; dragTop = Top;
+        dragSurface = surface; surface.CaptureMouse(); e.Handled = true;
+      };
+      surface.MouseMove += delegate(object sender, MouseEventArgs e) {
+        if (!pointerDown) return;
+        if (e.LeftButton != MouseButtonState.Pressed) { FinishDrag(); return; }
+        POINT current; if (!GetCursorPos(out current)) return;
+        var transform = PresentationSource.FromVisual(this).CompositionTarget.TransformFromDevice;
+        var delta = transform.Transform(new Vector(current.X - dragStart.X, current.Y - dragStart.Y));
+        if (!dragging && Math.Abs(delta.X) + Math.Abs(delta.Y) < 4) return;
+        string direction = current.X < dragLast.X ? "left" : current.X > dragLast.X ? "right" : dragDirection;
+        if (!dragging || direction != dragDirection) { dragDirection = direction; NativeApp.Emit(new { type = "drag", active = true, direction = direction }); }
+        dragging = true; surface.Cursor = Cursors.SizeAll; dragLast = current;
+        Left = dragLeft + delta.X; Top = dragTop + delta.Y; e.Handled = true;
+      };
+      surface.MouseLeftButtonUp += delegate(object sender, MouseButtonEventArgs e) { if (pointerDown) { FinishDrag(); e.Handled = true; } };
+      surface.LostMouseCapture += delegate { if (pointerDown) FinishDrag(); };
+    }
     void FinishDrag() {
       bool moved = dragging; pointerDown = false; dragging = false;
-      sprite.ReleaseMouseCapture(); sprite.Cursor = Cursors.Hand;
+      var surface = dragSurface; dragSurface = null;
+      if (surface != null) { surface.ReleaseMouseCapture(); surface.Cursor = surface == sprite ? Cursors.Hand : Cursors.SizeAll; }
       if (moved) { ClampToScreen(); NativeApp.Emit(new { type = "drag", active = false, direction = dragDirection }); NativeApp.Emit(new { type = "position", x = Left, y = Top }); }
-      else { statusText.Text = T("我在，随时陪你一起。"); statusUntil = DateTime.UtcNow.AddSeconds(3); NativeApp.Emit(new { type = "greet" }); }
+      else if (surface == sprite) { statusText.Text = T("我在，随时陪你一起。"); statusUntil = DateTime.UtcNow.AddSeconds(3); NativeApp.Emit(new { type = "greet" }); }
     }
     Button MakeButton(string label, Action action, CornerRadius? corners = null) {
       var border = new FrameworkElementFactory(typeof(Border)); border.SetValue(Border.CornerRadiusProperty, corners ?? new CornerRadius(8));
@@ -380,7 +387,7 @@ namespace DshPet {
     void ApplyTheme(Dictionary<string, object> theme) {
       dark = Bool(theme, "dark", true); bg = Color(dark ? "#24272D" : "#FFFFFF"); fg = Color(dark ? "#EDF1F7" : "#202C40"); line = Color(dark ? "#404650" : "#DEE6F0");
       accent = Color(dark ? "#669FE8" : "#4279C9"); muted = Color(dark ? "#A4B1C3" : "#6C7B91");
-      toolbar.Background = bg; toolbar.BorderBrush = line;
+      toolbar.Background = bg; toolbar.BorderBrush = line; dragGrip.Foreground = muted;
       statusPill.Background = bg; statusPill.BorderBrush = line;
       foreach (var button in buttons) PaintButton(button, button.IsMouseOver);
       foreach (var element in controls.Children) { var divider = element as Border; if (divider != null) divider.Background = line; }
@@ -630,7 +637,7 @@ namespace DshPet {
       statusLabel = Str(message, "label", "随时准备好"); chatTitle.Text = currentName + " · " + T("聊一聊");
       AutomationProperties.SetHelpText(this, currentName + " · " + T(statusLabel));
       double scale = Math.Max(.35, Math.Min(1.5, Num(preferences, "scale", .72)));
-      mini = Str(preferences, "mode") == "mini"; sprite.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
+      mini = Str(preferences, "mode") == "mini"; dragGrip.Visibility = mini ? Visibility.Visible : Visibility.Collapsed; dragGrip.ToolTip = T("拖动移动"); AutomationProperties.SetName(dragGrip, T("拖动移动")); sprite.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
       sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(language == "en" ? 220 : 184, sprite.Width + 10);
       ApplyTheme(Obj(message, "theme"));
       chat.PopupAnimation = activity.PopupAnimation = Bool(preferences, "reducedMotion") ? PopupAnimation.None : PopupAnimation.Fade;
@@ -662,7 +669,7 @@ namespace DshPet {
       if (desktop && Bool(preferences, "visible", true)) { if (!IsVisible) Show(); } else { chat.IsOpen = false; activity.IsOpen = false; completion.IsOpen = false; Hide(); }
       var position = Get(preferences, "desktopPosition") as Dictionary<string, object>;
       string positionKey = NativeApp.Json.Serialize(position);
-      if (firstPosition || (!dragging && positionKey != stateKey)) {
+      if (firstPosition || (!pointerDown && positionKey != stateKey)) {
         stateKey = positionKey; firstPosition = false;
         Left = position == null ? SystemParameters.WorkArea.Right - Width - 32 : Num(position, "x", 200);
         Top = position == null ? SystemParameters.WorkArea.Bottom - sprite.Height - 78 : Num(position, "y", 200);

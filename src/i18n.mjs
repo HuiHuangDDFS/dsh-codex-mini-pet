@@ -5,6 +5,7 @@ export const LANGUAGES = Object.freeze([
 
 // Chinese source text is the default and the shared key for browser/native UI.
 export const ENGLISH_MESSAGES = Object.freeze({
+  '拖动移动': 'Drag to move',
   '自定义外观': 'Customize',
   'Mini 与虚拟宠物': 'Mini & pets',
   '按下': 'Press',

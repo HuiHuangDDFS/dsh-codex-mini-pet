@@ -27,7 +27,7 @@ export const dockCss = `
 .dhp-dock-empty{text-align:center;padding:24px 4px}.dhp-dock-empty span{display:inline-grid;place-items:center;width:38px;height:38px;background:var(--hp-soft);border-radius:50%;color:#70a997;font-size:20px}.dhp-dock-empty strong{display:block;font-size:14px;margin:10px 0 5px}
 @keyframes dhp-tray-in{from{opacity:0;transform:translateY(7px) scale(.98)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.dhp-dock *{animation:none!important;transition:none!important;transform:none!important}}
 .dhp-dock[data-reduced=true] *{animation:none!important;transition:none!important;transform:none!important}
-.dhp-dock{transition:opacity .18s ease,transform .18s ease}.dhp-dock[data-shown=false]{opacity:0;transform:translateY(6px);pointer-events:none}.dhp-dock[data-reduced=true]{transition:none;transform:none}@media(prefers-reduced-motion:reduce){.dhp-dock,.dhp-completion{transition:none;animation:none;transform:none}}
+.dhp-dock .dhp-drag-grip{cursor:grab;touch-action:none;user-select:none;flex:none;padding:0 8px;min-width:24px}.dhp-dock .dhp-drag-grip:active{cursor:grabbing}.dhp-dock{transition:opacity .18s ease,transform .18s ease}.dhp-dock[data-shown=false]{opacity:0;transform:translateY(6px);pointer-events:none}.dhp-dock[data-reduced=true]{transition:none;transform:none}@media(prefers-reduced-motion:reduce){.dhp-dock,.dhp-completion{transition:none;animation:none;transform:none}}
 .dhp-choice{position:relative;margin:5px 0 10px}.dhp-choice-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid var(--hp-border);background:var(--hp-soft);border-radius:10px;color:var(--hp-text);padding:10px 12px;text-align:left;font:inherit;font-size:12px}.dhp-choice-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dhp-choice-trigger:hover,.dhp-choice-trigger[aria-expanded=true]{border-color:#719cd8}
 .dhp-choice-list{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 5px);max-height:220px;overflow:auto;padding:5px;background:var(--hp-bg);border:1px solid var(--hp-border);border-radius:12px;box-shadow:0 12px 30px #172b5426}.dhp-choice-option{position:relative;width:100%;display:block;background:transparent;border:0;border-radius:8px;padding:9px 28px 9px 10px;color:var(--hp-text);text-align:left;font:inherit;font-size:12px}.dhp-choice-option:hover,.dhp-choice-option[aria-selected=true]{background:var(--hp-soft)}.dhp-choice-option span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dhp-choice-option small{display:block;font-size:10px;color:var(--hp-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}.dhp-choice-option[aria-selected=true]:after{content:'✓';position:absolute;right:10px;top:10px;color:#719cd8}
 .dhp-completion{position:absolute;width:250px;pointer-events:auto;background:var(--hp-bg);border:1px solid var(--hp-border);border-radius:15px;padding:14px;box-shadow:0 10px 30px #15255022;animation:dhp-tray-in .18s ease-out}.dhp-completion:after{content:'';position:absolute;bottom:-7px;width:12px;height:12px;background:var(--hp-bg);border-right:1px solid var(--hp-border);border-bottom:1px solid var(--hp-border);transform:rotate(45deg)}.dhp-completion[data-side=right]:after{left:18px}.dhp-completion[data-side=left]:after{right:18px}.dhp-completion>button:first-child{float:right;border:0;background:transparent;color:var(--hp-muted);padding:0 3px}.dhp-completion strong{font-size:13px}.dhp-completion-open{display:grid;gap:7px;text-align:left;background:transparent;border:0;color:var(--hp-text);padding:8px 0 0;width:100%;font:inherit}.dhp-completion-open span{max-height:40px;overflow:hidden;font-size:12px}.dhp-completion-open small{font-size:10px;color:var(--hp-muted)}.dhp-completion[data-reduced=true]{animation:none}
@@ -59,7 +59,7 @@ function DockIcon({ activity = false }) {
   return <svg viewBox="0 0 20 20" aria-hidden="true">{activity ? <><path d="M3 5h2m3 0h9M3 10h2m3 0h9M3 15h2m3 0h9" /></> : <path d="M5 3.5h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9L4 17v-3a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z" />}</svg>;
 }
 
-export function PetDock({ ctx, rows, position, petBounds, mini, focusRequest, onPreferences, reducedMotion = false, language = 'zh-CN' }) {
+export function PetDock({ ctx, rows, position, petBounds, mini, dragHandlers, focusRequest, onPreferences, reducedMotion = false, language = 'zh-CN' }) {
   const t = createTranslator(language);
   const actions = React.useMemo(() => createHarnessActions(ctx), [ctx]);
   const [page, setPage] = useState(null);
@@ -78,7 +78,7 @@ export function PetDock({ ctx, rows, position, petBounds, mini, focusRequest, on
   const keyFor = row => `${row.state}:${row.activityVersion}:${JSON.stringify(row.pendingInteraction)}:${JSON.stringify(row.error)}`;
   const visible = rows.filter(row => !muted.has(row.id) && dismissed.get(row.id) !== keyFor(row));
   const hidden = rows.length - visible.length;
-  const dockLeft = Math.max(8, Math.min(position.x, window.innerWidth - 220));
+  const dockLeft = Math.max(8, Math.min(position.x, window.innerWidth - (mini ? (language === 'en' ? 280 : 250) : 220)));
   const dockTop = Math.max(8, Math.min(position.y, window.innerHeight - 48));
   const body = petBounds || { x: dockLeft, y: dockTop, width: 192, height: 40 };
   const placement = sidePanelPosition(body, { width: window.innerWidth, height: window.innerHeight });
@@ -140,6 +140,7 @@ export function PetDock({ ctx, rows, position, petBounds, mini, focusRequest, on
     return next;
   });
   return <div className="dhp-dock" data-reduced={reducedMotion} data-shown={shown} onFocusCapture={() => setNear(true)} ref={root} style={{ left: dockLeft, top: dockTop }}>
+    {mini && <button className="dhp-drag-grip" aria-label={t("拖动移动")} title={t("拖动移动")} {...dragHandlers}>⠿</button>}
     <button aria-label={t("快速聊天")} aria-expanded={page === 'chat'} onClick={() => { setPage(current => current === 'chat' ? null : 'chat'); setError(''); }}><DockIcon />{t("聊一聊")}</button>
     <button aria-label={t('任务动态 {count} 条', { count: visible.length })} aria-expanded={page === 'activity'} onClick={() => { setPage(current => current === 'activity' ? null : 'activity'); setError(''); }}><DockIcon activity />{t('动态')}{visible.length > 0 && <span className="dhp-count">{visible.length}</span>}</button>
     {mini && <button aria-label={t("显示宠物形象")} onClick={() => onPreferences({ mode: 'pet' })}>✦</button>}
