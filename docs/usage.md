@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-hide-pet-1.2.5.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-hide-pet-1.2.5.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 
@@ -48,7 +48,7 @@ node src/cli.mjs preview
 
 精简模式仅保留聊天与动态；隐藏会收起整个伙伴。按需显示在点击外部区域时收起。Ctrl+Alt+Shift+P 在 Harness 窗口内唤出并聚焦快速聊天；快捷键可由宿主快捷键设置管理。Windows 桌面置顶模式另提供固定的全局 Ctrl+Alt+Shift+P，热键被其他程序占用时可点击伙伴操作栏。Windows 桌面版默认独立置顶，主窗口最小化后仍可见；右键可打开设置、隐藏伙伴或切回应用内。完全退出 Harness 时关闭伙伴窗口。应用内拖动移动形象，也可方向键微调，Shift 加速，Enter 保存，Esc 还原。
 
-“设置 → 宠物伙伴 → 外观与行为”的“桌面置顶”开关控制 `surface: desktop | app`；CLI 可使用 `preferences --surface desktop` 或 `preferences --surface app`。Web 和非 Windows 平台保留应用内显示。桌面窗口启动失败时自动保留应用内伙伴。
+“设置 → codex-mini-pet → 外观与行为”的“桌面置顶”开关控制 `surface: desktop | app`；CLI 可使用 `preferences --surface desktop` 或 `preferences --surface app`。Web 和非 Windows 平台保留应用内显示。桌面窗口启动失败时自动保留应用内伙伴。
 
 ## skill
 
@@ -59,3 +59,12 @@ node src/cli.mjs preview
 该 skill 优先使用宿主工具，缺少工具时可使用已安装的同名命令行。它不要求 ChatGPT Library、Pets MCP 或云端上传会话。
 
 鼠标靠近伙伴时操作栏渐显，离开后延迟收起；精简模式始终保留入口。再次点击“聊一聊”或“动态”可收起面板。桌面拖动按移动方向播放左右跑动，打开的面板及完成气泡同步重新定位；松开后恢复任务状态，减少动态效果时保留静态姿态。
+
+
+## 界面语言
+
+进入「设置 → codex-mini-pet → 外观与行为 → 语言」，选择简体中文（默认）或 English。切换立即生效并保存在本机，桌面聊天草稿和当前会话保持不变。
+
+设置首页按「Mini 与虚拟宠物」组织：顶部预览与显示开关，下方卡片切换伙伴；选择「无」进入精简模式。「管理当前伙伴」中可导出及维护自定义形象。
+
+仓库名称为 `dsh-codex-mini-pet`，Harness 展示名称为 `codex-mini-pet`。现有安装包标识和本地数据目录继续兼容旧版，无需重新导入宠物。

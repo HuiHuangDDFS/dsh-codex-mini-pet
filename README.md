@@ -3,14 +3,14 @@
 <img src="assets/pets/whale-girl/preview.png" alt="深蓝鲸娘" width="120">
 <img src="assets/pets/zhiyu/preview.png" alt="智域" width="120">
 
-# dsh-hide-pet
+# dsh-codex-mini-pet
 
 **DeepSeek Harness 的桌面宠物伙伴**
 
-[![版本](https://img.shields.io/github/v/tag/HuiHuangDDFS/dsh-hide-pet?label=version&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-hide-pet/tags)
-[![下载](https://img.shields.io/github/downloads/HuiHuangDDFS/dsh-hide-pet/total?label=downloads&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest)
+[![版本](https://img.shields.io/github/v/tag/HuiHuangDDFS/dsh-codex-mini-pet?label=version&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tags)
+[![下载](https://img.shields.io/github/downloads/HuiHuangDDFS/dsh-codex-mini-pet/total?label=downloads&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)
 [![代码许可](https://img.shields.io/badge/code-MIT-263146?style=flat-square)](LICENSE)
-[![验证](https://github.com/HuiHuangDDFS/dsh-hide-pet/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/HuiHuangDDFS/dsh-hide-pet/actions/workflows/verify.yml)
+[![验证](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml)
 ![适配版本](https://img.shields.io/badge/dsh-0.2.0--rc.2-2f6f4f?style=flat-square)
 ![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
 
@@ -21,13 +21,15 @@
 
 *Animated companions for DeepSeek Harness — chat from your desktop, follow your tasks, and bring your own character.*
 
-[下载最新版](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest) · [功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
+[下载最新版](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) · [功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
 
 </div>
 
 ---
 
 ## 亮点
+
+- **中文默认，也可用英语**——在「外观与行为 → 语言」中切换，设置页与桌面聊天即时更新，草稿和会话选择保留。
 
 - **Harness 在后台，伙伴也在桌面上**——Windows 桌面版使用独立透明置顶窗口，主窗口最小化后仍可见；完全退出 Harness 时一起关闭。
 - **两个初始伙伴**——内置蓝白鲸鱼主题 Q 版「深蓝鲸娘」和白发黑衣「智域」，在设置中直接切换。
@@ -36,7 +38,7 @@
 - **从伙伴旁开始聊天**——选择工作区、新建会话或继续未归档会话，普通消息在后台提交；“在主会话编辑”才唤起 Harness 并聚焦输入栏。Windows 桌面模式支持全局 **Ctrl+Alt+Shift+P**。
 - **面板跟着伙伴走**——聊天、动态和完成气泡随伙伴重新定位，靠近屏幕边缘时向内展开；拖动时保留聊天草稿和所选会话。
 - **留意多个任务**——显示运行、等待回应、错误及未读完成状态，点击动态打开对应原生会话；确认和审批仍在原生会话中处理。
-- **融入 Harness 原生设置**——管理入口就在「设置 → 宠物伙伴」，使用宿主的按钮、开关、输入框与分段控件，支持浅色和深色主题。
+- **融入 Harness 原生设置**——管理入口就在「设置 → codex-mini-pet」，使用宿主的按钮、开关、输入框与分段控件，支持浅色和深色主题。
 - **带上你自己的角色**——兼容 Codex v1/v2 宠物包、PNG/WebP、`pet.json` 与旧版 `avatar.json`；支持 ZIP 导入导出，以及保留宠物 ID 的图集替换。
 - **本地管理，配套 skill**——宠物库和偏好保存在本机；提供 `pet_*` 工具、`/pet` 命令和独立 CLI，配套技能可指导创建、校验与导入。
 
@@ -52,7 +54,7 @@
 
 ### Harness 原生设置
 
-桌面版：**左下角「更多」→ 设置 → 宠物伙伴**。Web 版直接进入「设置 → 宠物伙伴」。
+桌面版：**左下角「更多」→ 设置 → codex-mini-pet**。Web 版直接进入「设置 → codex-mini-pet」。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
@@ -62,7 +64,7 @@
 | 页面 | 可以做什么 |
 | --- | --- |
 | 伙伴 | 选择形象、显示或收起、导出 ZIP，编辑自定义伙伴信息、替换图集 |
-| 外观与行为 | 桌面置顶、大小、精简模式、显示方式、目光跟随、减少动态效果、重置位置 |
+| 外观与行为 | 中文 / English 界面语言、桌面置顶、大小、精简模式、显示方式、目光跟随、减少动态效果、重置位置 |
 | 动作 | 逐项预览九类动作和十六个注视方向 |
 | 导入 | 导入宠物 ZIP 或透明 PNG/WebP 动作图，并检查图集结构 |
 
@@ -72,19 +74,19 @@
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest)，在 **Assets** 下载 [`dsh-hide-pet-1.2.5.tgz`](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/download/v1.2.5/dsh-hide-pet-1.2.5.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-hide-pet-1.2.5.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v1.2.5/dsh-hide-pet-1.2.5.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
 ```sh
-git clone https://github.com/HuiHuangDDFS/dsh-hide-pet.git
-cd dsh-hide-pet
+git clone https://github.com/HuiHuangDDFS/dsh-codex-mini-pet.git
+cd dsh-codex-mini-pet
 npm ci
 npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-hide-pet-1.2.5.tgz`。固定版本源码可从 [v1.2.5 标签](https://github.com/HuiHuangDDFS/dsh-hide-pet/tree/v1.2.5) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-hide-pet-1.2.5.tgz`。固定版本源码可从 [v1.2.5 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v1.2.5) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -127,7 +129,7 @@ dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.2.5.tgz
 
 ### 选择与调整伙伴
 
-进入「设置 → 宠物伙伴」选择鲸鱼娘或智域。在「外观与行为」中调整大小、目光跟随和减少动态效果；关闭「桌面置顶」即可切回应用内显示。
+进入「设置 → codex-mini-pet」选择鲸鱼娘或智域。在「外观与行为」中调整大小、目光跟随和减少动态效果；关闭「桌面置顶」即可切回应用内显示。
 
 **精简模式**收起角色形象、保留聊天和动态；**隐藏伙伴**收起整个窗口。可在设置中再次显示，或输入 `/pet show`。
 

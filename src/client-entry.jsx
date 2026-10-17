@@ -6,6 +6,8 @@ import { PetDock, dockCss } from './pet-dock.jsx';
 import { registerPetShortcut } from './shortcuts.mjs';
 import { createCompletionTracker, inwardBubblePosition } from './companion-behavior.mjs';
 import { UiButton, UiInput, UiSwitch, UiTabs, setNativeUi, settingsCss } from './native-ui.jsx';
+import { LANGUAGES, createTranslator, translate } from './i18n.mjs';
+
 
 const nativeKit = DSH_PET_PREVIEW ? null : require('@deepseek-ai/dsh-client-ui-primitives');
 
@@ -30,7 +32,8 @@ function useSource(source, fallback) {
   return useSyncExternalStore(actual.subscribe, actual.getSnapshot, actual.getSnapshot);
 }
 
-function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotion = false, loop = false }) {
+function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotion = false, loop = false, language = 'zh-CN' }) {
+  const t = createTranslator(language);
   const [time, setTime] = useState(0);
   const [failed, setFailed] = useState(false);
   const start = useRef(Date.now());
@@ -53,7 +56,7 @@ function Sprite({ pet, animation = 'idle', gaze = null, scale = .6, reducedMotio
   }, [animation, gaze, reducedMotion, src]);
   const width = CELL.width * scale;
   const height = CELL.height * scale;
-  if (!src || failed) return <div className="dhp-load-art" style={{ width, height }}>{failed ? '形象暂未加载' : '准备形象中…'}</div>;
+  if (!src || failed) return <div className="dhp-load-art" style={{ width, height }}>{failed ? t('形象暂未加载') : t('准备形象中…')}</div>;
   const frame = frameFor(animation, time, { reducedMotion, gaze, version, loop });
   return <div className="dhp-sprite" aria-hidden="true" style={{ width, height, backgroundImage: `url(${JSON.stringify(src)})`, backgroundSize: `${width * 8}px ${height * frame.rows}px`, backgroundPosition: `${-width * frame.column}px ${-height * frame.row}px` }} />;
 }
@@ -92,6 +95,8 @@ function downloadArchive(result) {
 
 export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const [state, setState] = useState({ pets: [], preferences: {} });
+  const language = state.preferences?.language || 'zh-CN';
+  const t = useMemo(() => createTranslator(language), [language]);
   const [ready, setReady] = useState(false);
   const open = settingsOnly;
   const [tab, setTab] = useState('library');
@@ -249,10 +254,10 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
             else if (event.type === 'open-settings') {
               const entry = ctx.slots.entries('sidebar.settings').find(item => item.options?.store?.create);
               const actions = entry?.options?.store?.create()?.actions;
-              if (!actions?.openSection) throw new Error('请从更多 → 设置打开宠物伙伴。');
+              if (!actions?.openSection) throw new Error(t('请从更多 → 设置打开宠物伙伴。'));
               actions.openSection('dsh-hide-pet');
             }
-            replies.push({ id: event.id, kind: event.type, ok: true, ...(event.type === 'edit-chat' ? { message: '已转入主会话草稿，由你发送' } : {}) });
+            replies.push({ id: event.id, kind: event.type, ok: true, ...(event.type === 'edit-chat' ? { message: t('已转入主会话草稿，由你发送') } : {}) });
           } catch (error) { replies.push({ id: event.id, kind: event.type, ok: false, error: error.message }); }
         }
       } catch { /* The existing state poll reports connection failures. */ }
@@ -379,20 +384,20 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const importPet = async () => {
     if (!upload) return;
     try {
-      if (upload.size > 24 * 1024 * 1024) throw new Error('文件超过 24 MB，请压缩后导入。');
+      if (upload.size > 24 * 1024 * 1024) throw new Error(t('文件超过 24 MB，请压缩后导入。'));
       const base64 = await fileBase64(upload);
       let result;
-      if (/\.zip$/i.test(upload.name)) result = await perform('import', { archiveBase64: base64 }, '已加入宠物库');
-      else result = await perform('import', { manifest: { name: uploadName.trim() || upload.name.replace(/\.[^.]+$/, ''), description: '导入的自定义伙伴' }, spritesheetBase64: base64 }, '已加入宠物库');
+      if (/\.zip$/i.test(upload.name)) result = await perform('import', { archiveBase64: base64 }, t('已加入宠物库'));
+      else result = await perform('import', { manifest: { name: uploadName.trim() || upload.name.replace(/\.[^.]+$/, ''), description: t('导入的自定义伙伴') }, spritesheetBase64: base64 }, t('已加入宠物库'));
       if (result) { setUpload(null); setUploadName(''); setTab('library'); }
     } catch (error) { setMessage({ error: true, text: error.message }); }
   };
   const validatePet = async () => {
     if (!upload || /\.zip$/i.test(upload.name)) return;
     try {
-      if (upload.size > 24 * 1024 * 1024) throw new Error('文件超过 24 MB，请压缩后校验。');
+      if (upload.size > 24 * 1024 * 1024) throw new Error(t('文件超过 24 MB，请压缩后校验。'));
       const report = await perform('validate', { spritesheetBase64: await fileBase64(upload) });
-      if (report) setMessage({ error: report.valid === false || report.ok === false, text: report.valid === false || report.ok === false ? `校验未通过：${JSON.stringify(report.errors || report.issues || report)}` : '结构校验通过，可导入。' });
+      if (report) setMessage({ error: report.valid === false || report.ok === false, text: report.valid === false || report.ok === false ? t('校验未通过：{details}', { details: JSON.stringify(report.errors || report.issues || report) }) : t('结构校验通过，可导入。') });
     } catch (error) { setMessage({ error: true, text: error.message }); }
   };
   const exportPet = async () => {
@@ -402,8 +407,8 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const replacePet = async file => {
     if (!file || !pet || pet.builtin) return;
     try {
-      if (file.size > 24 * 1024 * 1024) throw new Error('文件超过 24 MB。');
-      await perform('replace', { id: pet.id, spritesheetBase64: await fileBase64(file) }, '图集已替换，伙伴 ID 与显示偏好已保留');
+      if (file.size > 24 * 1024 * 1024) throw new Error(t('文件超过 24 MB。'));
+      await perform('replace', { id: pet.id, spritesheetBase64: await fileBase64(file) }, t('图集已替换，伙伴 ID 与显示偏好已保留'));
     } catch (error) { setMessage({ error: true, text: error.message }); }
   };
   const nativePrompt = async text => {
@@ -417,9 +422,9 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const actualAnimation = dragging ? dragAnimation : interaction || (hover && presentation.animation === 'idle' ? 'jumping' : presentation.animation);
   const actualGaze = !dragging && !interaction && !hover && presentation.animation === 'idle' ? gaze : null;
 
-  return <div className={`dhp-root${settingsOnly ? ' dhp-settings' : ''}`} data-dsh-hide-pet="true">
+  return <div className={`dhp-root${settingsOnly ? ' dhp-settings' : ''}`} data-dsh-hide-pet="true" lang={language}>
     <style>{css + dockCss + `.dhp-settings{position:relative;inset:auto;pointer-events:auto;width:100%;height:100%;min-width:0}.dhp-settings .dhp-panel{position:static;width:100%;max-width:none;max-height:none;overflow:visible;border:0;border-radius:0;box-shadow:none;animation:none}.dhp-settings .dhp-head{padding:0 0 18px}.dhp-settings .dhp-tabs{margin:0 0 18px}.dhp-settings .dhp-body{padding:0 0 24px}.dhp-settings .dhp-head h2{font-size:20px}.dhp-settings .dhp-art-stage{height:125px}`}</style><style>{settingsCss}</style>
-    {!settingsOnly && !desktopSurface && visible && !mini && pet && <div className="dhp-pet" role="button" tabIndex={0} aria-label={`${pet.name}，点击打招呼，拖动移动，方向键调整位置，右键打开菜单`} data-dragging={dragging} style={{ left: currentPosition.x, top: currentPosition.y }}
+    {!settingsOnly && !desktopSurface && visible && !mini && pet && <div className="dhp-pet" role="button" tabIndex={0} aria-label={t('{name}，点击打招呼，拖动移动，方向键调整位置，右键打开菜单', { name: pet.name })} data-dragging={dragging} style={{ left: currentPosition.x, top: currentPosition.y }}
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setDragging(false); }}
       onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)} onDoubleClick={() => play('waving')}
       onContextMenu={event => { event.preventDefault(); setMenu({ x: Math.min(event.clientX, window.innerWidth - 185), y: Math.min(event.clientY, window.innerHeight - 210) }); }}
@@ -434,61 +439,70 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (keyboardOrigin.current) { keyboardOrigin.current = null; preferences({ position: currentPosition }); } else play('waving'); }
         if (event.key === 'ContextMenu') setMenu({ x: currentPosition.x, y: Math.max(8, currentPosition.y - 170) });
       }}>
-      <div className="dhp-pet-bubble">{presentation.label} · {pet.name}</div>
-      <Sprite pet={pet} animation={actualAnimation} gaze={actualGaze} scale={scale} reducedMotion={reduced} />
+      <div className="dhp-pet-bubble">{t(presentation.label)} · {pet.name}</div>
+      <Sprite language={language} pet={pet} animation={actualAnimation} gaze={actualGaze} scale={scale} reducedMotion={reduced} />
     </div>}
-    {!settingsOnly && !desktopSurface && visible && <PetDock ctx={ctx} rows={rows} mini={mini} reducedMotion={reduced} focusRequest={chatFocus} petBounds={{ ...currentPosition, ...size }} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
-    {!settingsOnly && !desktopSurface && visible && completionBubble && <aside className="dhp-completion" data-side={completionPosition.side} data-reduced={reduced} role="status" style={{ left: completionPosition.x, top: completionPosition.y }}><button aria-label="关闭完成提醒" onClick={() => setCompletionBubble(null)}>×</button><strong>任务完成啦</strong><button className="dhp-completion-open" onClick={() => { native.openSession(completionBubble.sessionId); setCompletionBubble(null); }}><span>{completionBubble.title}</span><small>查看结果 ›</small></button></aside>}
+    {!settingsOnly && !desktopSurface && visible && <PetDock language={language} ctx={ctx} rows={rows} mini={mini} reducedMotion={reduced} focusRequest={chatFocus} petBounds={{ ...currentPosition, ...size }} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
+    {!settingsOnly && !desktopSurface && visible && completionBubble && <aside className="dhp-completion" data-side={completionPosition.side} data-reduced={reduced} role="status" style={{ left: completionPosition.x, top: completionPosition.y }}><button aria-label={t("关闭完成提醒")} onClick={() => setCompletionBubble(null)}>×</button><strong>{t("任务完成啦")}</strong><button className="dhp-completion-open" onClick={() => { native.openSession(completionBubble.sessionId); setCompletionBubble(null); }}><span>{completionBubble.title}</span><small>{t("查看结果 ›")}</small></button></aside>}
     {menu && <div className="dhp-menu" role="menu" style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}>
-      <small>{pet?.name} · {presentation.label}</small>
-      <button role="menuitem" onClick={() => { play('waving'); setMenu(null); }}>向我打招呼</button>
-      <button role="menuitem" onClick={() => { play('jumping'); setMenu(null); }}>跳一下</button>
-      <button role="menuitem" onClick={() => { preferences({ mode: mini ? 'pet' : 'mini' }); setMenu(null); }}>{mini ? '显示宠物形象' : '精简模式'}</button>
-      <button role="menuitem" onClick={() => { preferences({ visible: false }); setMenu(null); }}>收起伙伴</button>
-      <small>设置 › 宠物伙伴 中管理形象</small>
+      <small>{pet?.name} · {t(presentation.label)}</small>
+      <button role="menuitem" onClick={() => { play('waving'); setMenu(null); }}>{t("向我打招呼")}</button>
+      <button role="menuitem" onClick={() => { play('jumping'); setMenu(null); }}>{t("跳一下")}</button>
+      <button role="menuitem" onClick={() => { preferences({ mode: mini ? 'pet' : 'mini' }); setMenu(null); }}>{mini ? t('显示宠物形象') : t('精简模式')}</button>
+      <button role="menuitem" onClick={() => { preferences({ visible: false }); setMenu(null); }}>{t("收起伙伴")}</button>
+      <small>{t("设置 › codex-mini-pet 中管理形象")}</small>
     </div>}
-    {open && <section className="dhp-panel" aria-label="宠物伙伴" ref={panel}>
-      <header className="dhp-head"><div><h2>宠物伙伴</h2><p>选择形象，设置桌面显示与互动。</p></div><UiButton className="dhp-button" disabled={busy} onClick={() => apiRequest('state').then(acceptState).catch(error => setMessage({ error: true, text: error.message }))}>刷新</UiButton></header>
-      <div className="dhp-tabs"><UiTabs value={tab} onChange={setTab} /></div>
-      <div className="dhp-body" id="dhp-tab-content" role="tabpanel" aria-label="宠物伙伴选项">
-        {message && <div className="dhp-message" data-error={message.error || false} role={message.error ? 'alert' : 'status'}>{message.text}</div>}
-        {!ready && <div className="dhp-empty"><span className="dhp-spinner" />连接伙伴库…</div>}
+    {open && <section className="dhp-panel" aria-label={t("宠物伙伴")} ref={panel}>
+      <header className="dhp-head"><div><h2>{t("Mini 与虚拟宠物")}</h2><p>{t("按下")} <kbd>Ctrl+Alt+Shift+P</kbd> {t("即可唤出伙伴并开始聊天")}</p></div><UiButton className="dhp-button" disabled={busy} onClick={() => preferences({ visible: !visible })}>{visible ? t('隐藏 Mini') : t('显示 Mini')}</UiButton></header>
+      <div className="dhp-tabs"><UiTabs value={tab} onChange={setTab} language={language} /></div>
+      <div className="dhp-body" id="dhp-tab-content" role="tabpanel" aria-label={t("宠物伙伴选项")}>
+        {message && <div className="dhp-message" data-error={message.error || false} role={message.error ? 'alert' : 'status'}>{t(message.text)}</div>}
+        {!ready && <div className="dhp-empty"><span className="dhp-spinner" />{t("连接伙伴库…")}</div>}
         {ready && tab === 'library' && <>
-          <div className="dhp-status"><span className="dhp-dot" data-working={presentation.animation === 'running'} />{presentation.label}<span style={{ marginLeft: 'auto', maxWidth: 140, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{presentation.title}</span></div>
-          <div className="dhp-grid">{state.pets.map(item => <button className="dhp-card" key={item.id} aria-pressed={item.id === pet?.id} disabled={busy} onClick={() => perform('select', { id: item.id })}>
-            {item.id === pet?.id && <span className="dhp-check">✓</span>}<div className="dhp-art-stage"><Sprite pet={item} scale={.48} reducedMotion={reduced} /></div><span className="dhp-card-name">{item.name}</span><span className="dhp-card-note">{item.builtin ? '初始伙伴' : '自定义伙伴'} · {Number(item.spriteVersion) === 1 ? '经典动作' : '16 向目光'}</span>
+          <div className="dhp-home-hero">
+            <div className="dhp-home-character">{!mini && pet && <Sprite language={language} pet={pet} scale={.95} reducedMotion={reduced} />}
+              <div className="dhp-home-toolbar"><UiButton className="dhp-button" disabled={busy} onClick={async () => { if (!visible) await preferences({ visible: true }); window.dispatchEvent(new Event('dhp-focus-chat')); }}>{t('聊一聊')}</UiButton><span aria-hidden="true">·</span><UiButton className="dhp-button" onClick={() => setTab('motion')}>{t('动作预览')}</UiButton></div>
+            </div>
+            <UiButton className="dhp-button dhp-home-customize" onClick={() => setTab('settings')}>{t('自定义外观')}</UiButton>
+          </div>
+          <div className="dhp-library-head"><h3>{t('我的虚拟宠物')}</h3><div className="dhp-actions"><UiButton className="dhp-button" aria-label={t('刷新宠物库')} disabled={busy} onClick={() => apiRequest('state').then(acceptState).catch(error => setMessage({ error: true, text: error.message }))}>↻</UiButton><UiButton className="dhp-button" disabled={busy || !native.getContext().capabilities.composer || !native.getContext().currentWorkspaceId} onClick={createPet}>{t('创建虚拟宠物')}</UiButton></div></div>
+          <div className="dhp-grid dhp-home-grid">
+            <button className="dhp-card" aria-pressed={mini} disabled={busy} onClick={() => preferences({ mode: 'mini', visible: true })}>{mini && <span className="dhp-check">✓</span>}<div className="dhp-art-stage"><span className="dhp-mini-illustration" aria-hidden="true">✎ <i /> ▤ <i /> ⌄</span></div><span className="dhp-card-name">{t('无')}</span><span className="dhp-card-note">{t('轻量模式，保留聊天与动态')}</span></button>
+            {state.pets.map(item => <button className="dhp-card" key={item.id} aria-pressed={!mini && item.id === pet?.id} disabled={busy} onClick={() => perform('select', { id: item.id })}>
+            {!mini && item.id === pet?.id && <span className="dhp-check">✓</span>}<div className="dhp-art-stage"><Sprite language={language} pet={item} scale={.48} reducedMotion={reduced} /></div><span className="dhp-card-name">{item.name}</span><span className="dhp-card-note">{item.builtin ? t(item.description) : item.description || t('自定义伙伴')}</span>
           </button>)}</div>
-          {pet && <div className="dhp-selected"><div className="dhp-detail-title"><span>{pet.name}</span><span className="dhp-tag">{pet.builtin ? '内置' : '自定义'}</span></div><p className="dhp-detail-note">{pet.description}</p>
-            {!pet.builtin && <><label className="dhp-field"><span>伙伴名称</span><UiInput type="text" value={rename} maxLength={64} onChange={event => setRename(event.target.value)} /></label><label className="dhp-field"><span>描述</span><UiInput type="text" value={description} maxLength={500} onChange={event => setDescription(event.target.value)} /></label></>}
-            <div className="dhp-actions"><UiButton className="dhp-button primary" disabled={busy} onClick={() => preferences({ visible: !visible })}>{visible ? '收起伙伴' : '唤出伙伴'}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={exportPet}>导出 ZIP</UiButton>
-              {!pet.builtin && <><UiButton className="dhp-button" disabled={busy || !rename.trim() || (rename === pet.name && description === pet.description)} onClick={() => perform('update', { id: pet.id, patch: { name: rename.trim(), description } }, '伙伴信息已更新')}>保存信息</UiButton><UiButton className="dhp-button" disabled={busy} onClick={() => replacementInput.current?.click()}>替换图集</UiButton><input ref={replacementInput} type="file" accept=".png,.webp" hidden onChange={event => { replacePet(event.target.files?.[0]); event.target.value = ''; }} /><UiButton className="dhp-button danger" disabled={busy} onClick={() => confirmDelete ? perform('delete', { id: pet.id }, '已移出宠物库') : setConfirmDelete(true)}>{confirmDelete ? '确认删除此伙伴' : '删除'}</UiButton>{confirmDelete && <UiButton className="dhp-button" onClick={() => setConfirmDelete(false)}>取消</UiButton>}</>}
-            </div></div>}
-          <div className="dhp-actions" style={{ marginTop: 16 }}><UiButton className="dhp-button" disabled={busy || !native.getContext().capabilities.composer || !native.getContext().currentWorkspaceId} onClick={createPet}>创建新伙伴…</UiButton>{pet && !pet.builtin && Number(pet.spriteVersion) === 1 && <UiButton className="dhp-button" disabled={busy || !native.getContext().currentWorkspaceId} onClick={() => nativePrompt(`请使用 dsh-hide-pet 技能将现有自定义宠物 ${pet.id}（${pet.name}）升级为 v2。先导出备份，保留角色、九类动作和原 ID，增加十六方向注视，校验及动画预览通过后用 pet_replace 替换图集；不要用重新导入来代替更新。`)}>升级为 v2…</UiButton>}<UiButton className="dhp-button" disabled={busy} onClick={() => preferences({ mode: 'mini', visible: true })}>精简模式 · 只显示操作栏</UiButton></div>
-          <p className="dhp-footer">拖动时左右跑动 · 点击打招呼 · 在操作栏聊天或查看动态</p>
+          {pet && <details className="dhp-selected dhp-management"><summary>{t("管理当前伙伴")}</summary><div className="dhp-management-body"><div className="dhp-detail-title"><span>{pet.name}</span><span className="dhp-tag">{pet.builtin ? t('内置') : t('自定义')}</span></div><p className="dhp-detail-note">{pet.builtin ? t(pet.description) : pet.description}</p>
+            {!pet.builtin && <><label className="dhp-field"><span>{t("伙伴名称")}</span><UiInput type="text" value={rename} maxLength={64} onChange={event => setRename(event.target.value)} /></label><label className="dhp-field"><span>{t("描述")}</span><UiInput type="text" value={description} maxLength={500} onChange={event => setDescription(event.target.value)} /></label></>}
+            <div className="dhp-actions"><UiButton className="dhp-button primary" disabled={busy} onClick={() => preferences({ visible: !visible })}>{visible ? t('收起伙伴') : t('唤出伙伴')}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={exportPet}>{t("导出 ZIP")}</UiButton>
+              {!pet.builtin && <><UiButton className="dhp-button" disabled={busy || !rename.trim() || (rename === pet.name && description === pet.description)} onClick={() => perform('update', { id: pet.id, patch: { name: rename.trim(), description } }, t('伙伴信息已更新'))}>{t("保存信息")}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={() => replacementInput.current?.click()}>{t("替换图集")}</UiButton><input ref={replacementInput} type="file" accept=".png,.webp" hidden onChange={event => { replacePet(event.target.files?.[0]); event.target.value = ''; }} /><UiButton className="dhp-button danger" disabled={busy} onClick={() => confirmDelete ? perform('delete', { id: pet.id }, t('已移出宠物库')) : setConfirmDelete(true)}>{confirmDelete ? t('确认删除此伙伴') : t('删除')}</UiButton>{confirmDelete && <UiButton className="dhp-button" onClick={() => setConfirmDelete(false)}>{t("取消")}</UiButton>}</>}
+            </div></div></details>}
+          <div className="dhp-actions" style={{ marginTop: 16 }}>{pet && !pet.builtin && Number(pet.spriteVersion) === 1 && <UiButton className="dhp-button" disabled={busy || !native.getContext().currentWorkspaceId} onClick={() => nativePrompt(`请使用 dsh-hide-pet 技能将现有自定义宠物 ${pet.id}（${pet.name}）升级为 v2。先导出备份，保留角色、九类动作和原 ID，增加十六方向注视，校验及动画预览通过后用 pet_replace 替换图集；不要用重新导入来代替更新。`)}>{t("升级为 v2…")}</UiButton>}</div>
+          <p className="dhp-footer">{t("拖动时左右跑动 · 点击打招呼 · 在操作栏聊天或查看动态")}</p>
         </>}
         {ready && tab === 'motion' && <>
-          <div className="dhp-preview"><Sprite pet={pet} animation={preview} gaze={previewGaze} scale={.75} reducedMotion={reduced} loop /></div>
-          <div className="dhp-animation-grid">{ANIMATIONS.map(item => <button key={item.id} aria-pressed={previewGaze === null && preview === item.id} onClick={() => { setPreview(item.id); setPreviewGaze(null); }}>{item.label}</button>)}</div>
-          {Number(pet?.spriteVersion) !== 1 && <><div className="dhp-label">目光方向 · 0° 朝上，顺时针</div><div className="dhp-direction-grid">{Array.from({ length: 16 }, (_, index) => <button key={index} aria-pressed={previewGaze === index} onClick={() => { setPreview('idle'); setPreviewGaze(index); }}>{index * 22.5}°</button>)}</div></>}
-          <p className="dhp-footer">工作、等待和确认状态会跟随当前对话自动切换。预览仅在此面板播放。</p>
+          <div className="dhp-preview"><Sprite language={language} pet={pet} animation={preview} gaze={previewGaze} scale={.75} reducedMotion={reduced} loop /></div>
+          <div className="dhp-animation-grid">{ANIMATIONS.map(item => <button key={item.id} aria-pressed={previewGaze === null && preview === item.id} onClick={() => { setPreview(item.id); setPreviewGaze(null); }}>{t(item.label)}</button>)}</div>
+          {Number(pet?.spriteVersion) !== 1 && <><div className="dhp-label">{t("目光方向 · 0° 朝上，顺时针")}</div><div className="dhp-direction-grid">{Array.from({ length: 16 }, (_, index) => <button key={index} aria-pressed={previewGaze === index} onClick={() => { setPreview('idle'); setPreviewGaze(index); }}>{index * 22.5}°</button>)}</div></>}
+          <p className="dhp-footer">{t("工作、等待和确认状态会跟随当前对话自动切换。预览仅在此面板播放。")}</p>
         </>}
         {ready && tab === 'settings' && <>
-          <div className="dhp-setting-row"><div>桌面置顶<p>{state.desktop?.supported ? 'Harness 在后台或最小化时，伙伴仍显示在桌面上。' : '独立桌面窗口适用于 Windows 桌面版 Harness。'}</p></div><UiSwitch label="桌面置顶" checked={prefs.surface !== 'app' && Boolean(state.desktop?.supported)} disabled={busy || !state.desktop?.supported} onChange={next => preferences({ surface: next ? 'desktop' : 'app' })} /></div>
-          {state.desktop?.error && <p className="dhp-footer">桌面窗口暂不可用，已回到应用内显示。请重启 Harness 后重试。</p>}
-          <label className="dhp-field"><span className="dhp-field-head">伙伴大小<small>{Math.round(scale * 100)}%</small></span><input type="range" min="0.35" max="1.5" step="0.01" value={scale} disabled={busy} onChange={event => { const value = Number(event.target.value); setState(current => ({ ...current, preferences: { ...current.preferences, scale: value } })); }} onPointerUp={event => preferences({ scale: Number(event.target.value) })} onKeyUp={event => preferences({ scale: Number(event.currentTarget.value) })} /></label>
-          <div className="dhp-setting-row"><div>显示伙伴<p>收起后可在此处或用 /pet show 唤回。</p></div><UiSwitch label="显示伙伴" checked={visible} disabled={busy} onChange={next => preferences({ visible: next })} /></div>
-          <div className="dhp-setting-row"><div>精简模式<p>保留聊天与动态操作，暂时收起形象。</p></div><UiSwitch label="精简模式" checked={mini} disabled={busy} onChange={next => preferences({ mode: next ? 'mini' : 'pet' })} /></div>
-          <label className="dhp-field"><span>显示方式</span><select value={prefs.visibilityBehavior || 'always'} disabled={busy} onChange={event => preferences({ visibilityBehavior: event.target.value })}><option value="always">始终显示</option><option value="on-demand">按需显示 · 点击空白收起</option></select></label>
-          <div className="dhp-setting-row"><div>目光跟随指针<p>闲暇时朝你的鼠标方向望一望。</p></div><UiSwitch label="目光跟随指针" checked={prefs.followPointer !== false} disabled={busy || Number(pet?.spriteVersion) === 1} onChange={next => preferences({ followPointer: next })} /></div>
-          <div className="dhp-setting-row"><div>减少动态效果<p>{osReduced ? '系统已启用减少动态效果。' : '保留静态姿态，减少循环动作。'}</p></div><UiSwitch label="减少动态效果" checked={Boolean(prefs.reducedMotion)} disabled={busy} onChange={next => preferences({ reducedMotion: next })} /></div>
-          <div className="dhp-actions" style={{ marginTop: 18 }}><UiButton className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'position' })}>重置位置</UiButton><UiButton className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'size' })}>重置大小</UiButton></div>
-          <p className="dhp-footer">偏好保存在本机。桌面模式下，Ctrl+Alt+Shift+P 可在其他应用中唤出快速聊天；若热键被占用，可点击伙伴操作栏。应用内快捷键可在 Harness 设置中调整。</p>
+          <label className="dhp-field"><span>{t('语言')}</span><select aria-label={t('语言')} value={language} disabled={busy} onChange={event => preferences({ language: event.target.value })}>{LANGUAGES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select><span className="dhp-language-note">{t('选择界面语言，立即生效。')}</span></label>
+          <div className="dhp-setting-row"><div>{t("桌面置顶")}<p>{state.desktop?.supported ? t('Harness 在后台或最小化时，伙伴仍显示在桌面上。') : t('独立桌面窗口适用于 Windows 桌面版 Harness。')}</p></div><UiSwitch label={t("桌面置顶")} checked={prefs.surface !== 'app' && Boolean(state.desktop?.supported)} disabled={busy || !state.desktop?.supported} onChange={next => preferences({ surface: next ? 'desktop' : 'app' })} /></div>
+          {state.desktop?.error && <p className="dhp-footer">{t("桌面窗口暂不可用，已回到应用内显示。请重启 Harness 后重试。")}</p>}
+          <label className="dhp-field"><span className="dhp-field-head">{t("伙伴大小")}<small>{Math.round(scale * 100)}%</small></span><input type="range" min="0.35" max="1.5" step="0.01" value={scale} disabled={busy} onChange={event => { const value = Number(event.target.value); setState(current => ({ ...current, preferences: { ...current.preferences, scale: value } })); }} onPointerUp={event => preferences({ scale: Number(event.target.value) })} onKeyUp={event => preferences({ scale: Number(event.currentTarget.value) })} /></label>
+          <div className="dhp-setting-row"><div>{t("显示伙伴")}<p>{t("收起后可在此处或用 /pet show 唤回。")}</p></div><UiSwitch label={t("显示伙伴")} checked={visible} disabled={busy} onChange={next => preferences({ visible: next })} /></div>
+          <div className="dhp-setting-row"><div>{t("精简模式")}<p>{t("保留聊天与动态操作，暂时收起形象。")}</p></div><UiSwitch label={t("精简模式")} checked={mini} disabled={busy} onChange={next => preferences({ mode: next ? 'mini' : 'pet' })} /></div>
+          <label className="dhp-field"><span>{t("显示方式")}</span><select value={prefs.visibilityBehavior || 'always'} disabled={busy} onChange={event => preferences({ visibilityBehavior: event.target.value })}><option value="always">{t("始终显示")}</option><option value="on-demand">{t("按需显示 · 点击空白收起")}</option></select></label>
+          <div className="dhp-setting-row"><div>{t("目光跟随指针")}<p>{t("闲暇时朝你的鼠标方向望一望。")}</p></div><UiSwitch label={t("目光跟随指针")} checked={prefs.followPointer !== false} disabled={busy || Number(pet?.spriteVersion) === 1} onChange={next => preferences({ followPointer: next })} /></div>
+          <div className="dhp-setting-row"><div>{t("减少动态效果")}<p>{osReduced ? t('系统已启用减少动态效果。') : t('保留静态姿态，减少循环动作。')}</p></div><UiSwitch label={t("减少动态效果")} checked={Boolean(prefs.reducedMotion)} disabled={busy} onChange={next => preferences({ reducedMotion: next })} /></div>
+          <div className="dhp-actions" style={{ marginTop: 18 }}><UiButton className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'position' })}>{t("重置位置")}</UiButton><UiButton className="dhp-button" disabled={busy} onClick={() => perform('reset', { scope: 'size' })}>{t("重置大小")}</UiButton></div>
+          <p className="dhp-footer">{t("偏好保存在本机。桌面模式下，Ctrl+Alt+Shift+P 可在其他应用中唤出快速聊天；若热键被占用，可点击伙伴操作栏。应用内快捷键可在 Harness 设置中调整。")}</p>
         </>}
         {ready && tab === 'import' && <>
-          <div className="dhp-upload"><strong>让新伙伴加入</strong><p>导入宠物 ZIP 包，或透明 PNG / WebP 动作图。<br />v2：1536 × 2288 · 9 组动作 + 16 个目光方向</p><UiButton className="dhp-button" disabled={busy} onClick={() => fileInput.current?.click()}>选择文件</UiButton><input ref={fileInput} type="file" hidden accept=".zip,.png,.webp,application/zip,image/png,image/webp" onChange={event => { setUpload(event.target.files?.[0] || null); setMessage(null); event.target.value = ''; }} />{upload && <div className="dhp-file">{upload.name} · {(upload.size / 1024 / 1024).toFixed(2)} MB</div>}</div>
-          {upload && !/\.zip$/i.test(upload.name) && <label className="dhp-field">伙伴名称<UiInput type="text" placeholder="为新伙伴取个名字" maxLength={64} value={uploadName} onChange={event => setUploadName(event.target.value)} /></label>}
-          <div className="dhp-actions"><UiButton className="dhp-button primary" disabled={busy || !upload} onClick={importPet}>{busy ? '处理中…' : '导入伙伴'}</UiButton>{upload && !/\.zip$/i.test(upload.name) && <UiButton className="dhp-button" disabled={busy} onClick={validatePet}>先检查动作图</UiButton>}</div>
-          <p className="dhp-footer">ZIP 包保留名称与描述；单张图片自动识别 v1 / v2。请使用你有权使用的形象，导入前会检查文件结构。</p>
+          <div className="dhp-upload"><strong>{t("让新伙伴加入")}</strong><p>{t("导入宠物 ZIP 包，或透明 PNG / WebP 动作图。")}<br />{t("v2：1536 × 2288 · 9 组动作 + 16 个目光方向")}</p><UiButton className="dhp-button" disabled={busy} onClick={() => fileInput.current?.click()}>{t("选择文件")}</UiButton><input ref={fileInput} type="file" hidden accept=".zip,.png,.webp,application/zip,image/png,image/webp" onChange={event => { setUpload(event.target.files?.[0] || null); setMessage(null); event.target.value = ''; }} />{upload && <div className="dhp-file">{upload.name} · {(upload.size / 1024 / 1024).toFixed(2)} MB</div>}</div>
+          {upload && !/\.zip$/i.test(upload.name) && <label className="dhp-field">{t("伙伴名称")}<UiInput type="text" placeholder={t("为新伙伴取个名字")} maxLength={64} value={uploadName} onChange={event => setUploadName(event.target.value)} /></label>}
+          <div className="dhp-actions"><UiButton className="dhp-button primary" disabled={busy || !upload} onClick={importPet}>{busy ? t('处理中…') : t('导入伙伴')}</UiButton>{upload && !/\.zip$/i.test(upload.name) && <UiButton className="dhp-button" disabled={busy} onClick={validatePet}>{t("先检查动作图")}</UiButton>}</div>
+          <p className="dhp-footer">{t("ZIP 包保留名称与描述；单张图片自动识别 v1 / v2。请使用你有权使用的形象，导入前会检查文件结构。")}</p>
         </>}
       </div>
     </section>}
@@ -498,7 +512,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
 export function apply(ctx) {
   setNativeUi(nativeKit);
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'dsh-hide-pet', order: 90 }, () => <PetApp ctx={ctx} />));
-  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-hide-pet', order: 40, label: () => '宠物伙伴' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
+  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-hide-pet', order: 40, label: () => 'codex-mini-pet' }, ({ close }) => <PetApp ctx={ctx} settingsOnly closeSettings={close} />));
   ctx.effect(() => registerPetShortcut(ctx.shortcuts, () => {
       apiRequest('action', { action: 'preferences', patch: { visible: true } }).then(() => { window.dispatchEvent(new Event('dhp-state-change')); window.dispatchEvent(new Event('dhp-focus-chat')); }).catch(() => {});
   }));

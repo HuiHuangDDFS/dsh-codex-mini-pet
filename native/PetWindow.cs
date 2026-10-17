@@ -98,6 +98,11 @@ namespace DshPet {
     readonly Button sendButton;
     readonly Button activityButton;
     readonly List<Button> buttons = new List<Button>();
+    readonly Dictionary<TextBlock, string> textSources = new Dictionary<TextBlock, string>();
+    readonly Dictionary<Button, string> buttonSources = new Dictionary<Button, string>();
+    readonly Dictionary<FrameworkElement, string> tooltipSources = new Dictionary<FrameworkElement, string>();
+    Dictionary<string, object> messages = new Dictionary<string, object>();
+    string language = "zh-CN", feedbackSource = "";
     readonly DispatcherTimer pointer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
     BitmapSource[] frames = new BitmapSource[0];
     Dictionary<string, object> preferences = new Dictionary<string, object>();
@@ -122,6 +127,27 @@ namespace DshPet {
     static double Num(Dictionary<string, object> value, string key, double fallback) { try { var result = Get(value, key); return result == null ? fallback : Convert.ToDouble(result); } catch { return fallback; } }
     static Dictionary<string, object> Obj(Dictionary<string, object> value, string key) { return Get(value, key) as Dictionary<string, object> ?? new Dictionary<string, object>(); }
     Brush Color(string value) { return (Brush)new BrushConverter().ConvertFromString(value); }
+    string T(string source) {
+      if (language == "en") return Str(messages, source, source);
+      if (!messages.ContainsKey(source)) foreach (var item in messages) if (Convert.ToString(item.Value) == source) return item.Key;
+      return source;
+    }
+    TextBlock Localized(TextBlock text) { textSources[text] = text.Text; text.Text = T(text.Text); return text; }
+    void SetFeedback(string source) { feedbackSource = source; feedback.Text = T(source); }
+    void ApplyLanguage(Dictionary<string, object> value) {
+      string next = Str(preferences, "language", "zh-CN");
+      bool changed = next != language; language = next; messages = Obj(value, "messages");
+      foreach (var item in textSources) item.Key.Text = T(item.Value);
+      foreach (var item in buttonSources) {
+        if (item.Key.Content is string) item.Key.Content = T(item.Value);
+        AutomationProperties.SetName(item.Key, T(item.Value));
+      }
+      foreach (var item in tooltipSources) item.Key.ToolTip = T(item.Value);
+      Title = T("DeepSeek Harness · 宠物伙伴"); feedback.Text = T(feedbackSource);
+      AutomationProperties.SetName(workspace, T("快速聊天工作区"));
+      AutomationProperties.SetName(sessionTarget, T("快速聊天会话"));
+      if (changed) { lastRows = ""; BuildMenu(); StyleSelector(workspace); StyleSelector(sessionTarget); }
+    }
 
     public PetWindow() {
       Title = "DeepSeek Harness · 宠物伙伴"; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
@@ -159,12 +185,12 @@ namespace DshPet {
       var closeChat = MakeButton("×", delegate { chat.IsOpen = false; }); closeChat.ToolTip = "关闭聊天"; DockPanel.SetDock(closeChat, Dock.Right); titleRow.Children.Add(closeChat);
       var heading = new StackPanel(); heading.Children.Add(chatTitle); heading.Children.Add(chatSubtitle); titleRow.Children.Add(heading);
       chatPanel.Children.Add(titleRow);
-      chatPanel.Children.Add(new TextBlock { Text = "新会话 · 工作区", FontSize = 10, Margin = new Thickness(0, 8, 0, 6) });
+      chatPanel.Children.Add(Localized(new TextBlock { Text = "新会话 · 工作区", FontSize = 10, Margin = new Thickness(0, 8, 0, 6) }));
       chatPanel.Children.Add(workspace);
-      chatPanel.Children.Add(new TextBlock { Text = "会话", FontSize = 10, Margin = new Thickness(0, 0, 0, 6) });
+      chatPanel.Children.Add(Localized(new TextBlock { Text = "会话", FontSize = 10, Margin = new Thickness(0, 0, 0, 6) }));
       chatPanel.Children.Add(sessionTarget);
       var inputLayer = new Grid(); inputLayer.Children.Add(prompt); inputLayer.Children.Add(placeholder); inputBorder.Child = inputLayer; chatPanel.Children.Add(inputBorder);
-      chatPanel.Children.Add(new TextBlock { Text = "Enter 发送 · Shift+Enter 换行", FontSize = 10, Margin = new Thickness(2, 8, 0, 0) });
+      chatPanel.Children.Add(Localized(new TextBlock { Text = "Enter 发送 · Shift+Enter 换行", FontSize = 10, Margin = new Thickness(2, 8, 0, 0) }));
       prompt.BorderThickness = new Thickness(0); prompt.Background = Brushes.Transparent; prompt.Padding = new Thickness(11); prompt.MinHeight = 94;
       prompt.TextChanged += delegate { placeholder.Visibility = String.IsNullOrEmpty(prompt.Text) ? Visibility.Visible : Visibility.Collapsed; UpdateChatActions(); };
       prompt.GotKeyboardFocus += delegate { inputBorder.BorderBrush = accent; };
@@ -181,7 +207,7 @@ namespace DshPet {
       chatActions.Children.Add(sendButton);
       var activityPanel = new StackPanel(); var activityHeading = new DockPanel();
       var closeActivity = MakeButton("×", delegate { activity.IsOpen = false; }); closeActivity.Focusable = false; closeActivity.ToolTip = "关闭动态"; DockPanel.SetDock(closeActivity, Dock.Right); activityHeading.Children.Add(closeActivity);
-      activityHeading.Children.Add(new TextBlock { Text = "任务动态", FontSize = 17, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+      activityHeading.Children.Add(Localized(new TextBlock { Text = "任务动态", FontSize = 17, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center }));
       activityPanel.Children.Add(activityHeading); activityPanel.Children.Add(activitySummary);
       activityPanel.Children.Add(new ScrollViewer { Content = activities, MaxHeight = 340, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
       activity.Child = PopupBorder(activityPanel, 350);
@@ -189,7 +215,7 @@ namespace DshPet {
       var closeNotice = MakeButton("×", delegate { completion.IsOpen = false; }); closeNotice.ToolTip = "关闭完成提醒"; DockPanel.SetDock(closeNotice, Dock.Right); noticeHeading.Children.Add(closeNotice); noticeHeading.Children.Add(completionTitle);
       noticePanel.Children.Add(noticeHeading);
       var openResult = MakeButton("查看完成的任务", delegate { completion.IsOpen = false; OpenHarness(); NativeApp.Emit(new { type = "open-session", sessionId = completionSessionId }); });
-      var noticeContent = new StackPanel(); noticeContent.Children.Add(completionDetail); noticeContent.Children.Add(new TextBlock { Text = "查看结果  ›", FontSize = 10 }); openResult.Content = noticeContent; openResult.HorizontalContentAlignment = HorizontalAlignment.Left; noticePanel.Children.Add(openResult);
+      var noticeContent = new StackPanel(); noticeContent.Children.Add(completionDetail); noticeContent.Children.Add(Localized(new TextBlock { Text = "查看结果  ›", FontSize = 10 })); openResult.Content = noticeContent; openResult.HorizontalContentAlignment = HorizontalAlignment.Left; noticePanel.Children.Add(openResult);
       var noticeBody = PopupBorder(noticePanel, 250); noticeBody.Padding = new Thickness(12); noticeBody.CornerRadius = new CornerRadius(15); noticeBody.Margin = new Thickness(10, 10, 10, 0);
       var speech = new StackPanel(); speech.Children.Add(noticeBody); completionTail.Margin = new Thickness(24, 0, 24, 9); speech.Children.Add(completionTail); completion.Child = speech;
       prompt.PreviewKeyDown += delegate(object sender, KeyEventArgs e) {
@@ -235,13 +261,16 @@ namespace DshPet {
         NativeApp.Emit(new { type = "ready", hwnd = handle.ToInt64(), pid = Process.GetCurrentProcess().Id });
       };
       pointer.Tick += delegate { ObservePointer(); }; pointer.Start();
+      Localized(chatSubtitle); Localized(placeholder); Localized(completionTitle);
+      chatSubtitle.TextWrapping = TextWrapping.Wrap;
+      foreach (var button in buttons) if (button.ToolTip is string) tooltipSources[button] = (string)button.ToolTip;
       ApplyTheme(new Dictionary<string, object>()); BuildMenu();
     }
     void FinishDrag() {
       bool moved = dragging; pointerDown = false; dragging = false;
       sprite.ReleaseMouseCapture(); sprite.Cursor = Cursors.Hand;
       if (moved) { ClampToScreen(); NativeApp.Emit(new { type = "drag", active = false, direction = dragDirection }); NativeApp.Emit(new { type = "position", x = Left, y = Top }); }
-      else { statusText.Text = "我在，随时陪你一起。"; statusUntil = DateTime.UtcNow.AddSeconds(3); NativeApp.Emit(new { type = "greet" }); }
+      else { statusText.Text = T("我在，随时陪你一起。"); statusUntil = DateTime.UtcNow.AddSeconds(3); NativeApp.Emit(new { type = "greet" }); }
     }
     Button MakeButton(string label, Action action, CornerRadius? corners = null) {
       var border = new FrameworkElementFactory(typeof(Border)); border.SetValue(Border.CornerRadiusProperty, corners ?? new CornerRadius(8));
@@ -254,6 +283,7 @@ namespace DshPet {
       content.SetValue(FrameworkElement.HorizontalAlignmentProperty, new TemplateBindingExtension(Control.HorizontalContentAlignmentProperty)); content.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
       border.AppendChild(content);
       var button = new Button { Content = label, FontSize = 12, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, MinHeight = 32, HorizontalContentAlignment = HorizontalAlignment.Center, RenderTransform = new TranslateTransform(), Template = new ControlTemplate(typeof(Button)) { VisualTree = border } };
+      if (!label.Contains("\n")) buttonSources[button] = label;
       AutomationProperties.SetName(button, label);
       button.MouseEnter += delegate { PaintButton(button, true); Lift(button, -1.5); }; button.MouseLeave += delegate { PaintButton(button, false); Lift(button, 0); };
       button.IsEnabledChanged += delegate { button.Opacity = button.IsEnabled ? 1 : .45; };
@@ -264,7 +294,7 @@ namespace DshPet {
       var panel = new StackPanel { Orientation = Orientation.Horizontal };
       var icon = new System.Windows.Shapes.Path { Data = Geometry.Parse(geometry), Width = 16, Height = 16, Stretch = Stretch.None, StrokeThickness = 1.3, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
       icon.SetBinding(System.Windows.Shapes.Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = button });
-      panel.Children.Add(icon); panel.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center }); button.Content = panel;
+      panel.Children.Add(icon); panel.Children.Add(Localized(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center })); button.Content = panel;
       return button;
     }
     void PaintButton(Button button, bool hover) {
@@ -296,7 +326,7 @@ namespace DshPet {
     <ControlTemplate.Triggers><Trigger Property='IsMouseOver' Value='True'><Setter TargetName='Surface' Property='BorderBrush' Value='#719CD8'/></Trigger></ControlTemplate.Triggers>
    </ControlTemplate></ToggleButton.Template>
   </ToggleButton>
-  <TextBlock x:Name='Hint' Text='请选择' Margin='12,0,32,0' VerticalAlignment='Center' IsHitTestVisible='False' Visibility='Collapsed' Foreground='{TemplateBinding Foreground}'/>
+  <TextBlock x:Name='Hint' Text='" + T("请选择") + @"' Margin='12,0,32,0' VerticalAlignment='Center' IsHitTestVisible='False' Visibility='Collapsed' Foreground='{TemplateBinding Foreground}'/>
   <Popup x:Name='PART_Popup' IsOpen='{TemplateBinding IsDropDownOpen}' AllowsTransparency='True' Focusable='False' Placement='Bottom' VerticalOffset='5'>
    <Border Background='{TemplateBinding Background}' BorderBrush='{TemplateBinding BorderBrush}' BorderThickness='1' CornerRadius='12' Padding='5' MinWidth='{TemplateBinding ActualWidth}'>
     <ScrollViewer MaxHeight='230' CanContentScroll='True' HorizontalScrollBarVisibility='Disabled' VerticalScrollBarVisibility='Auto'><ItemsPresenter KeyboardNavigation.DirectionalNavigation='Contained'/></ScrollViewer>
@@ -374,7 +404,7 @@ namespace DshPet {
       AddMenu(menu, "隐藏伙伴", delegate { Hide(); NativeApp.Emit(new { type = "preferences", patch = new { visible = false } }); });
       ContextMenu = menu;
     }
-    void AddMenu(ContextMenu menu, string title, Action action) { var item = new MenuItem { Header = title }; item.Click += delegate { action(); }; menu.Items.Add(item); }
+    void AddMenu(ContextMenu menu, string title, Action action) { var item = new MenuItem { Header = T(title) }; item.Click += delegate { action(); }; menu.Items.Add(item); }
     IntPtr Hook(IntPtr hwnd, int message, IntPtr w, IntPtr l, ref bool handled) {
       if (message == 0x312 && w.ToInt32() == HotkeyId) {
         handled = true; if (!IsVisible) Show(); NativeApp.Emit(new { type = "preferences", patch = new { visible = true } }); ToggleChat();
@@ -408,7 +438,7 @@ namespace DshPet {
     }
     void UpdateWorkspaces() {
       var incoming = Get(context, "workspaces") as IEnumerable;
-      string key = NativeApp.Json.Serialize(incoming);
+      string key = NativeApp.Json.Serialize(incoming) + ":" + language;
       if (key == workspaceKey) { UpdateSessionTargets(); return; }
       workspaceKey = key;
       string selected = Convert.ToString(workspace.SelectedValue);
@@ -422,26 +452,26 @@ namespace DshPet {
       workspace.SelectedValue = selected;
       if (workspace.SelectedIndex < 0) workspace.SelectedValue = Str(context, "currentWorkspaceId");
       updatingTargets = false;
-      workspace.ToolTip = workspace.Items.Count == 0 ? "请先在 Harness 中添加工作区" : "选择新会话的工作区";
+      workspace.ToolTip = T(workspace.Items.Count == 0 ? "请先在 Harness 中添加工作区" : "选择新会话的工作区");
       UpdateSessionTargets();
       UpdateChatActions();
     }
     void UpdateSessionTargets() {
       string selectedWorkspace = Convert.ToString(workspace.SelectedValue);
       var incoming = Get(context, "sessions") as IEnumerable;
-      string key = selectedWorkspace + ":" + NativeApp.Json.Serialize(incoming);
+      string key = selectedWorkspace + ":" + NativeApp.Json.Serialize(incoming) + ":" + language;
       if (key == sessionsKey) return;
       bool sameWorkspace = sessionsKey.StartsWith(selectedWorkspace + ":", StringComparison.Ordinal);
       string selected = sameWorkspace ? Convert.ToString(sessionTarget.SelectedValue) : "new";
       sessionsKey = key; sessionTarget.Items.Clear();
-      sessionTarget.Items.Add(new ComboBoxItem { Content = "+ 新会话", Tag = "new", Foreground = fg });
+      sessionTarget.Items.Add(new ComboBoxItem { Content = T("+ 新会话"), Tag = "new", Foreground = fg });
       if (incoming != null) foreach (var value in incoming) {
         var item = value as Dictionary<string, object>; if (item == null || Str(item, "workspaceId") != selectedWorkspace) continue;
         sessionTarget.Items.Add(new ComboBoxItem { Content = Str(item, "title", "未命名会话"), Tag = Str(item, "sessionId"), Foreground = fg, ToolTip = Str(item, "title") });
       }
       sessionTarget.SelectedValue = selected;
       if (sessionTarget.SelectedIndex < 0) sessionTarget.SelectedValue = "new";
-      sessionTarget.ToolTip = "选择未归档会话，或开始新会话";
+      sessionTarget.ToolTip = T("选择未归档会话，或开始新会话");
     }
     void SendPrompt() {
       if (pending || String.IsNullOrWhiteSpace(prompt.Text)) return;
@@ -450,10 +480,10 @@ namespace DshPet {
     void BeginChat(string kind) {
       if (pending) return;
       string selected = Convert.ToString(workspace.SelectedValue);
-      if (String.IsNullOrEmpty(selected)) { feedback.Text = "请先选择工作区。"; workspace.Focus(); return; }
+      if (String.IsNullOrEmpty(selected)) { SetFeedback("请先选择工作区。"); workspace.Focus(); return; }
       pending = true; pendingSince = DateTime.UtcNow; sendButton.IsEnabled = false; workspace.IsEnabled = false; sessionTarget.IsEnabled = false;
       UpdateChatActions();
-      feedback.Text = kind == "edit-chat" ? "正在打开主会话…" : "正在发送…";
+      SetFeedback(kind == "edit-chat" ? "正在打开主会话…" : "正在发送…");
       // Sending stays in the background; only an explicit composer transfer opens Harness.
       if (kind == "edit-chat") OpenHarness();
       string target = Convert.ToString(sessionTarget.SelectedValue);
@@ -516,7 +546,7 @@ namespace DshPet {
       PaintButton(chatButton, chatButton.IsMouseOver); PaintButton(activityButton, activityButton.IsMouseOver);
       statusPill.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
       statusPill.Opacity = IsMouseOver || DateTime.UtcNow < statusUntil || statusLabel != "随时准备好" ? 1 : .88;
-      if (DateTime.UtcNow >= statusUntil) statusText.Text = statusLabel;
+      if (DateTime.UtcNow >= statusUntil) statusText.Text = T(statusLabel);
       if (completion.IsOpen && DateTime.UtcNow >= completionUntil) completion.IsOpen = false;
     }
     void ObservePointer() {
@@ -526,7 +556,7 @@ namespace DshPet {
       double dx = point.X - center.X, dy = point.Y - center.Y;
       int direction = Math.Sqrt(dx * dx + dy * dy) < 30 ? -1 : ((int)Math.Round((Math.Atan2(dx, -dy) * 180 / Math.PI + 360) % 360 / 22.5)) % 16;
       if (gaze != direction) { gaze = direction; NativeApp.Emit(new { type = "gaze", direction = direction }); }
-      if (pending && (DateTime.UtcNow - pendingSince).TotalSeconds > 25) { pending = false; workspace.IsEnabled = true; sessionTarget.IsEnabled = true; UpdateChatActions(); feedback.Text = "Harness 暂未响应，请打开主窗口检查。"; }
+      if (pending && (DateTime.UtcNow - pendingSince).TotalSeconds > 25) { pending = false; workspace.IsEnabled = true; sessionTarget.IsEnabled = true; UpdateChatActions(); SetFeedback("Harness 暂未响应，请打开主窗口检查。"); }
     }
     void ShowCompletions(Dictionary<string, object> message) {
       var incoming = Get(message, "completions") as IEnumerable; if (incoming == null) return;
@@ -583,7 +613,7 @@ namespace DshPet {
       if (type == "reply") {
         if (Str(message, "kind") != "send-chat" && Str(message, "kind") != "edit-chat") return;
         pending = false; workspace.IsEnabled = true; sessionTarget.IsEnabled = true;
-        if (Bool(message, "ok")) { prompt.Clear(); feedback.Text = Str(message, "message", "已发送到 Harness"); } else feedback.Text = Str(message, "error", "发送失败，请在主会话中重试。");
+        if (Bool(message, "ok")) { prompt.Clear(); SetFeedback(Str(message, "message", "已发送到 Harness")); } else SetFeedback(Str(message, "error", "发送失败，请在主会话中重试。"));
         feedback.Foreground = Bool(message, "ok") ? Color(dark ? "#91CEB4" : "#287D5B") : Color(dark ? "#FFADAD" : "#BC4C55");
         UpdateChatActions();
         if (!Bool(message, "ok")) { chat.IsOpen = true; Activate(); prompt.Focus(); }
@@ -596,35 +626,36 @@ namespace DshPet {
         NativeApp.Emit(new { type = "inspection", visible = IsVisible, topmost = Topmost, extendedStyle = GetWindowLongPtr(handle, -20).ToInt64(), ownerMinimized = minimized, harnessWindow = harness.ToInt64(), harnessVisible = harness != IntPtr.Zero && IsWindowVisible(harness), foregroundWindow = GetForegroundWindow().ToInt64(), left = Left, top = Top, name = currentName, frameCount = frames.Length, chatOpen = chat.IsOpen, chatBounds = BoundsOf(chat.Child as FrameworkElement), inputFocused = prompt.IsKeyboardFocused, workspaceCount = workspace.Items.Count, workspaceId = workspace.SelectedValue, workspaceBounds = BoundsOf(workspace), sessionCount = sessionTarget.Items.Count, sessionId = sessionTarget.SelectedValue, completionOpen = completion.IsOpen, completionBounds = BoundsOf(completion.Child as FrameworkElement), completionSide = completion.IsOpen ? (InwardRight() ? "right" : "left") : "", activityCount = activities.Children.Count, toolbarVisible = toolbarShown, toolbarBounds = BoundsOf(toolbar), spriteBounds = BoundsOf(sprite), buttons = labels }); return;
       }
       if (type != "state") return;
-      preferences = Obj(message, "preferences"); context = Obj(message, "context"); currentName = Str(message, "name");
-      statusLabel = Str(message, "label", "随时准备好"); chatTitle.Text = currentName + " · 聊一聊";
-      AutomationProperties.SetHelpText(this, currentName + " · " + statusLabel);
+      preferences = Obj(message, "preferences"); context = Obj(message, "context"); currentName = Str(message, "name"); ApplyLanguage(message);
+      statusLabel = Str(message, "label", "随时准备好"); chatTitle.Text = currentName + " · " + T("聊一聊");
+      AutomationProperties.SetHelpText(this, currentName + " · " + T(statusLabel));
       double scale = Math.Max(.35, Math.Min(1.5, Num(preferences, "scale", .72)));
       mini = Str(preferences, "mode") == "mini"; sprite.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
-      sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(184, sprite.Width + 10);
+      sprite.Width = 192 * scale; sprite.Height = 208 * scale; Width = Math.Max(language == "en" ? 220 : 184, sprite.Width + 10);
       ApplyTheme(Obj(message, "theme"));
       chat.PopupAnimation = activity.PopupAnimation = Bool(preferences, "reducedMotion") ? PopupAnimation.None : PopupAnimation.Fade;
       UpdateWorkspaces();
       var rowList = new List<object>(); var incomingRows = Get(message, "rows") as IEnumerable;
       if (incomingRows != null) foreach (var value in incomingRows) rowList.Add(value);
-      var rows = rowList.ToArray(); string rowsKey = NativeApp.Json.Serialize(rows) + ":" + dark;
+      var rows = rowList.ToArray(); string rowsKey = NativeApp.Json.Serialize(rows) + ":" + dark + ":" + language;
+      var activityLabel = (TextBlock)((StackPanel)activityButton.Content).Children[1]; activityLabel.Text = T("动态") + (rows.Length == 0 ? "" : " " + rows.Length); AutomationProperties.SetName(activityButton, activityLabel.Text);
       if (rowsKey != lastRows) {
-        lastRows = rowsKey; foreach (var element in activities.Children) { var previous = element as Button; if (previous != null) buttons.Remove(previous); } activities.Children.Clear(); var activityLabel = (TextBlock)((StackPanel)activityButton.Content).Children[1]; activityLabel.Text = rows.Length == 0 ? "动态" : "动态 " + rows.Length; AutomationProperties.SetName(activityButton, activityLabel.Text);
-        activitySummary.Text = rows.Length == 0 ? "安心做你的事，新进展会出现在这里。" : rows.Length + " 项进展 · 点击回到对应会话";
+        lastRows = rowsKey; foreach (var element in activities.Children) { var previous = element as Button; if (previous != null) buttons.Remove(previous); } activities.Children.Clear();
+        activitySummary.Text = rows.Length == 0 ? T("安心做你的事，新进展会出现在这里。") : T("{count} 项进展 · 点击回到对应会话").Replace("{count}", Convert.ToString(rows.Length));
         if (rows.Length == 0) {
           var empty = new StackPanel { Margin = new Thickness(0, 18, 0, 20) };
           empty.Children.Add(new TextBlock { Text = "✓", FontSize = 30, Foreground = accent, HorizontalAlignment = HorizontalAlignment.Center });
-          empty.Children.Add(new TextBlock { Text = "都安排好了", FontSize = 14, Foreground = fg, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 8, 0, 6) });
-          empty.Children.Add(new TextBlock { Text = "暂时没有需要关注的任务", FontSize = 11, Foreground = muted, TextAlignment = TextAlignment.Center }); activities.Children.Add(empty);
+          empty.Children.Add(new TextBlock { Text = T("都安排好了"), FontSize = 14, Foreground = fg, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 8, 0, 6) });
+          empty.Children.Add(new TextBlock { Text = T("暂时没有需要关注的任务"), FontSize = 11, Foreground = muted, TextAlignment = TextAlignment.Center }); activities.Children.Add(empty);
         } else foreach (var item in rows) {
           var task = item as Dictionary<string, object>; if (task == null) continue; string sessionId = Str(task, "id");
-          var button = MakeButton(Str(task, "title") + "\n" + Str(task, "label"), delegate { activity.IsOpen = false; OpenHarness(); NativeApp.Emit(new { type = "open-session", sessionId = sessionId }); }); button.Focusable = false;
+          var button = MakeButton(Str(task, "title") + "\n" + T(Str(task, "label")), delegate { activity.IsOpen = false; OpenHarness(); NativeApp.Emit(new { type = "open-session", sessionId = sessionId }); }); button.Focusable = false;
           string state = Str(task, "state"); Brush tint = Color(state == "needs-input" ? (dark ? "#F0C88D" : "#A36B17") : state == "blocked" ? (dark ? "#F19C9C" : "#BE5361") : state == "ready" ? (dark ? "#96D3B8" : "#338365") : (dark ? "#90B8EF" : "#4279C9"));
           var card = new Grid { Width = 272, Margin = new Thickness(1, 5, 1, 5) }; card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) }); card.ColumnDefinitions.Add(new ColumnDefinition()); card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
           var dot = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Fill = tint, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 0, 0) }; card.Children.Add(dot);
-          var detail = new StackPanel(); Grid.SetColumn(detail, 1); detail.Children.Add(new TextBlock { Text = Str(task, "title"), FontSize = 12, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis }); detail.Children.Add(new TextBlock { Text = Str(task, "label"), Foreground = tint, FontSize = 10, Margin = new Thickness(0, 5, 0, 0) }); card.Children.Add(detail);
+          var detail = new StackPanel(); Grid.SetColumn(detail, 1); detail.Children.Add(new TextBlock { Text = Str(task, "title"), FontSize = 12, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis }); detail.Children.Add(new TextBlock { Text = T(Str(task, "label")), Foreground = tint, FontSize = 10, Margin = new Thickness(0, 5, 0, 0) }); card.Children.Add(detail);
           var arrow = new TextBlock { Text = "›", Foreground = muted, FontSize = 19, VerticalAlignment = VerticalAlignment.Center }; Grid.SetColumn(arrow, 2); card.Children.Add(arrow);
-          button.Content = card; button.ToolTip = Str(task, "title") + " · " + Str(task, "label"); button.Margin = new Thickness(0, 3, 0, 3); PaintButton(button, false); button.HorizontalContentAlignment = HorizontalAlignment.Left; activities.Children.Add(button);
+          button.Content = card; button.ToolTip = Str(task, "title") + " · " + T(Str(task, "label")); button.Margin = new Thickness(0, 3, 0, 3); PaintButton(button, false); button.HorizontalContentAlignment = HorizontalAlignment.Left; activities.Children.Add(button);
         }
       }
       bool desktop = Str(preferences, "surface", "desktop") == "desktop"; SetHotkey(desktop);

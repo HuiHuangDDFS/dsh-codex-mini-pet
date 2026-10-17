@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { frameFor } from './client-model.mjs';
 import { desktopPng } from './atlas.mjs';
+import { ENGLISH_MESSAGES } from './i18n.mjs';
 
 export function isWindowsDesktopHost(platform = process.platform, argv = process.argv) {
   return platform === 'win32' && argv.some(value => /dsh-desktop-host[\\/]lib[\\/]index\.js$/.test(value));
@@ -71,6 +72,7 @@ export class DesktopCompanion {
         label: this.facts.presentation?.label || '随时准备好', rows: (this.facts.rows || []).slice(0, 30),
         context: this.facts.context || {}, theme: this.facts.theme || {},
         completions: (this.facts.completions || []).slice(-10),
+        messages: ENGLISH_MESSAGES,
       };
       const serialized = JSON.stringify(value);
       if (serialized !== this.previousState) { this.send(value); this.previousState = serialized; }
