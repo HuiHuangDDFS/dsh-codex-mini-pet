@@ -8,16 +8,20 @@
 **DeepSeek Harness 的桌面宠物伙伴**
 
 [![版本](https://img.shields.io/github/v/tag/HuiHuangDDFS/dsh-hide-pet?label=version&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-hide-pet/tags)
+[![下载](https://img.shields.io/github/downloads/HuiHuangDDFS/dsh-hide-pet/total?label=downloads&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest)
 [![代码许可](https://img.shields.io/badge/code-MIT-263146?style=flat-square)](LICENSE)
 [![验证](https://github.com/HuiHuangDDFS/dsh-hide-pet/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/HuiHuangDDFS/dsh-hide-pet/actions/workflows/verify.yml)
 ![适配版本](https://img.shields.io/badge/dsh-0.2.0--rc.2-2f6f4f?style=flat-square)
 ![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
 
-让鲸鱼娘和智域陪你写代码，也帮你留意正在运行的任务。
+> 在 Harness 里装上这个插件，让鲸鱼娘和智域走到桌面上，陪你写代码、聊想法，也帮你留意任务进展。
+>
+> 鼠标靠近，聊天与动态入口轻轻展开；拖动伙伴，面板跟着走。
+> 普通消息在后台发送，需要完整上下文时，一键回到 Harness 主会话编辑。
 
-*Animated companions for DeepSeek Harness — on your desktop, alongside your work.*
+*Animated companions for DeepSeek Harness — chat from your desktop, follow your tasks, and bring your own character.*
 
-[功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
+[下载最新版](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest) · [功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
 
 </div>
 
@@ -28,8 +32,9 @@
 - **Harness 在后台，伙伴也在桌面上**——Windows 桌面版使用独立透明置顶窗口，主窗口最小化后仍可见；完全退出 Harness 时一起关闭。
 - **两个初始伙伴**——内置蓝白鲸鱼主题 Q 版「深蓝鲸娘」和白发黑衣「智域」，在设置中直接切换。
 - **会跑、会打招呼，也会看向鼠标**——支持九类动作与十六方向注视；左右拖动时播放对应方向的跑步动画，松开后恢复任务状态。
-- **常驻操作栏**——底部保留「聊一聊」和「动态」，鼠标移开后仍可点击。支持精简模式、缩放、隐藏和减少动态效果。
-- **从伙伴旁开始聊天**——Windows 桌面模式支持全局 **Ctrl+Alt+Shift+P**；普通文字交给 Harness 原生会话处理，含文件、`@` 上下文或技能的内容可转入主输入栏继续编辑。
+- **靠近时展开**——鼠标接近伙伴后柔和显示「聊一聊」和「动态」，离开后延迟收起；打开面板时保留操作栏，精简模式始终保留入口。
+- **从伙伴旁开始聊天**——选择工作区、新建会话或继续未归档会话，普通消息在后台提交；“在主会话编辑”才唤起 Harness 并聚焦输入栏。Windows 桌面模式支持全局 **Ctrl+Alt+Shift+P**。
+- **面板跟着伙伴走**——聊天、动态和完成气泡随伙伴重新定位，靠近屏幕边缘时向内展开；拖动时保留聊天草稿和所选会话。
 - **留意多个任务**——显示运行、等待回应、错误及未读完成状态，点击动态打开对应原生会话；确认和审批仍在原生会话中处理。
 - **融入 Harness 原生设置**——管理入口就在「设置 → 宠物伙伴」，使用宿主的按钮、开关、输入框与分段控件，支持浅色和深色主题。
 - **带上你自己的角色**——兼容 Codex v1/v2 宠物包、PNG/WebP、`pet.json` 与旧版 `avatar.json`；支持 ZIP 导入导出，以及保留宠物 ID 的图集替换。
@@ -40,10 +45,10 @@
 ### 桌面上的伙伴
 
 <div align="center">
-  <img src="docs/images/desktop-pet.png" alt="深蓝鲸娘及常驻的聊天、动态操作栏" width="220">
+  <img src="docs/images/desktop-pet.png" alt="深蓝鲸娘及聊天、动态操作栏" width="220">
 </div>
 
-拖动形象调整位置，点击形象打招呼；点击底栏开始聊天或查看动态。右键可打开伙伴设置、隐藏伙伴或切回应用内显示。
+拖动形象调整位置，点击形象打招呼；鼠标靠近后，底栏出现“聊一聊”和“动态”，再次点击同一入口即可收起。右键可打开伙伴设置、隐藏伙伴或切回应用内显示。上图展示内置形象，入口的最新行为见下方说明。
 
 ### Harness 原生设置
 
@@ -63,11 +68,13 @@
 
 ## 安装
 
-当前稳定版为 **1.0.0**，已在 DeepSeek Harness **0.2.0-rc.2** 实机验证。独立桌面置顶功能适用于 **Windows 桌面版**；Web 及其他系统使用应用内伙伴。
+当前版本为 **1.2.5**，适配 DeepSeek Harness **0.2.0-rc.2**。独立桌面置顶功能适用于 **Windows 桌面版**；Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-目前从源码构建本地 `.tgz` 安装包，需要 **Node.js 22.19+** 和 npm。在终端中执行：
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/latest)，在 **Assets** 下载 [`dsh-hide-pet-1.2.5.tgz`](https://github.com/HuiHuangDDFS/dsh-hide-pet/releases/download/v1.2.5/dsh-hide-pet-1.2.5.tgz)。发布包已包含构建结果，直接安装即可。
+
+也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
 ```sh
 git clone https://github.com/HuiHuangDDFS/dsh-hide-pet.git
@@ -77,7 +84,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-hide-pet-1.0.0.tgz`。也可下载 [v1.0.0 源码 ZIP](https://github.com/HuiHuangDDFS/dsh-hide-pet/archive/refs/tags/v1.0.0.zip)，解压后在项目目录执行相同的 npm 命令。
+仓库根目录会生成 `dsh-hide-pet-1.2.5.tgz`。固定版本源码可从 [v1.2.5 标签](https://github.com/HuiHuangDDFS/dsh-hide-pet/tree/v1.2.5) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -89,7 +96,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-hide-pet-1.0.0.tgz).Path
+$petPackage = (Resolve-Path .\dsh-hide-pet-1.2.5.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -98,10 +105,10 @@ $petPackage = (Resolve-Path .\dsh-hide-pet-1.0.0.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.0.0.tgz
+dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.2.5.tgz
 ```
 
-将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。
+将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。
 
 请安装打包后的 `.tgz`，不要将源码目录作为桌面 profile 的链接依赖，也不要创建 junction。插件通过宿主的 bundle 机制加载，不需要修改 `app.asar` 或覆盖 Harness 安装文件。
 
@@ -128,15 +135,19 @@ dsh plugin --profile web add /绝对路径/dsh-hide-pet-1.0.0.tgz
 
 点击底栏「聊一聊」，或在 Windows 桌面置顶模式下按 **Ctrl+Alt+Shift+P**。
 
-- 桌面快捷聊天会在 Harness 当前选中的工作区创建新会话；使用前先在主窗口选择工作区并配置可用模型。
+- 桌面快捷聊天可直接选择工作区及其未归档会话，也可新建会话；默认使用 Harness 当前会话所在工作区。使用前请在 Harness 添加工作区并配置可用模型。
 - 应用内聊天栏还可选择工作区或已有会话作为发送目标。
-- 普通文字可直接发送；需要文件、`@` 上下文、技能或命令时，选择「在主会话编辑」，通过原生输入栏补充后由你发送。
+- **发送**：普通文字直接提交到所选会话，Harness 保持后台，不切换主界面的会话。
+- **在主会话编辑**：唤起 Harness，打开目标会话并将文字插入原生输入栏，保留已有草稿。需要文件、`@` 上下文、技能或命令时，在这里补充后由你发送。
+- **拖动与收起**：桌面面板保持打开并随伙伴移动；再次点击入口、点击关闭按钮或按 Esc 收起，保留尚未发送的文字。
 
 聊天沿用 Harness 的会话与模型配置。伙伴本身不提供模型服务，也不会替你确认审批。
 
 ### 查看任务动态
 
 「动态」按需要回应、遇到问题、完成待查看、运行中的顺序展示任务。Windows 桌面栏点击任务打开原生会话；应用内动态栏另提供回复、停止、收起提醒和静音等操作。
+
+查看、收起动态只操作伙伴面板；点击具体任务才唤起对应主会话。聊天与动态从伙伴侧边展开并随其移动。新任务完成后，伙伴朝向屏幕内侧的上角会出现短暂气泡，点击即可查看对应会话；启动时不会重复提醒旧任务。
 
 ### 在对话中管理
 
@@ -186,7 +197,7 @@ Windows 桌面置顶模式使用固定全局 Ctrl+Alt+Shift+P，其他软件占�
 
 **支持 macOS / Linux 的独立桌面宠物吗？**
 
-1.0 的独立置顶窗口使用 Windows 自带 WPF；其他平台提供应用内显示。实时双向语音、Codex 云端宠物服务、透明像素点击穿透和多显示器吸附尚未实现；多屏混合 DPI 尚未实机验证。
+独立置顶窗口使用 Windows 自带 WPF；其他平台提供应用内显示。实时双向语音、Codex 云端宠物服务、透明像素点击穿透和多显示器吸附尚未实现；多屏混合 DPI 尚未实机验证。
 
 ## 数据与隐私
 
@@ -218,7 +229,7 @@ npm run test:native
 
 该检查会短暂显示测试宠物并移动鼠标，验证跨区点击、按钮文字、聊天输入焦点、动态跳转、左右拖动动画、显示模式切换及进程退出。
 
-1.0 已通过 **36 项自动测试**、Windows/Linux CI，以及 Windows 桌面实机交互和浅/深色主题检查。适配基线、验证边界与更新记录见 [功能对齐说明](docs/feature-parity.md) 和 [CHANGELOG](CHANGELOG.md)。其他 Harness 版本需按实际接口验证。
+当前版本通过 **48 项自动测试**及 Windows 原生编译，并检查桌面聊天、动态与拖动行为。CI 在 Windows/Linux 上执行语法检查、测试、构建和打包验证，结果见页面顶部状态徽章。适配基线、验证边界与更新记录见 [功能对齐说明](docs/feature-parity.md) 和 [CHANGELOG](CHANGELOG.md)。其他 Harness 版本需按实际接口验证。
 
 ## 许可证与致谢
 

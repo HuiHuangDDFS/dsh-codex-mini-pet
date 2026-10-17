@@ -78,14 +78,15 @@ export function activityRows(sessions, statuses, snapshots = new Map(), { includ
   return [...ids].map(id => {
     const row = byId[id] || { id }, status = statuses?.get?.(id) || {};
     const snapshot = snapshots?.get?.(id);
+    const running = status.running ?? snapshot?.running ?? row.running ?? false;
     const pending = status.pendingInteraction;
     const error = snapshot?.lastTurnError || snapshot?.lastAgentError || snapshot?.openError || snapshot?.promptError?.error || null;
     // Running takes precedence over an error from a previous turn in this same chat.
-    const state = pending ? 'needs-input' : status.running || row.running ? 'running' : error ? 'blocked' : status.completionUnread ? 'ready' : 'idle';
+    const state = pending ? 'needs-input' : running ? 'running' : error ? 'blocked' : status.completionUnread ? 'ready' : 'idle';
     const spec = ACTIVITY_STATES[state];
     const kind = typeof pending === 'string' ? pending : pending?.kind || pending?.type || '';
     const label = state === 'needs-input' && /approv|review|permission/.test(kind) ? '等待你的确认' : spec.label;
-    return { id, sessionId: id, title: row.displayTitle || row.title || '未命名会话', state, label, animation: spec.animation, priority: spec.priority, active: (row.retainedBy?.mainView || 0) > 0, running: Boolean(status.running || row.running), pendingInteraction: pending || null, error, activityVersion: snapshot?.activityVersion || '', unread: Boolean(status.completionUnread) };
+    return { id, sessionId: id, title: row.displayTitle || row.title || '未命名会话', state, label, animation: spec.animation, priority: spec.priority, active: (row.retainedBy?.mainView || 0) > 0, running: Boolean(running), pendingInteraction: pending || null, error, activityVersion: snapshot?.activityVersion || '', turnEnded: Boolean(snapshot?.turnEnded), turnOutcome: snapshot?.turnOutcome ?? null, unread: Boolean(status.completionUnread) };
   }).filter(row => includeIdle || row.state !== 'idle').sort((a, b) => a.priority - b.priority || Number(b.active) - Number(a.active) || a.title.localeCompare(b.title));
 }
 

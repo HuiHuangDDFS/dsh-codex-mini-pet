@@ -58,6 +58,19 @@ test('desktop position supports monitors left of primary and remains separate fr
  const prefs=(await store.snapshot()).preferences;
  assert.equal(prefs.desktopPosition,null);assert.equal(prefs.position,null);
 });
+
+test('desktop chat preserves the selected workspace and permits opening an empty native draft', () => {
+  const d = new DesktopCompanion({}, { enabled: false });
+  d.onNative({ type: 'send-chat', text: 'hello', workspaceId: 'chosen' });
+  d.onNative({ type: 'edit-chat', text: '', workspaceId: 'other' });
+  d.onNative({ type: 'send-chat', text: '   ', workspaceId: 'chosen' });
+  d.onNative({ type: 'edit-chat', text: '', workspaceId: {} });
+  assert.deepEqual(d.events.map(({ type, text, workspaceId }) => ({ type, text, workspaceId })), [
+    { type: 'send-chat', text: 'hello', workspaceId: 'chosen' },
+    { type: 'edit-chat', text: '', workspaceId: 'other' },
+  ]);
+  d.dispose();
+});
 test('desktop PNG normalization retains existing atlas pixels without changing bytes',async()=>{
  const png=await fs.readFile(new URL('../assets/pets/zhiyu/spritesheet.png',import.meta.url));
  assert.deepEqual(await desktopPng(png),png);
@@ -81,5 +94,16 @@ test('captured drag takes priority over gaze and task state, loops, reverses and
   assert.equal(frames.at(-1).row,6,'release restores the real waiting state');
   d.facts={presentation:{animation:'idle'}};d.hover=true;d.previousFrame=null;d.draw();
   assert.equal(frames.at(-1).row,0,'hover must not cause endless jumping');
+  d.dispose();
+});
+
+test('working pose stays visible when the pointer is away from the pet', () => {
+  const d = new DesktopCompanion({}, { enabled: false });
+  d.active = true; d.preferences = { followPointer: true }; d.gaze = 4;
+  const frames = []; d.send = value => frames.push(value);
+  d.facts = { presentation: { animation: 'running' } }; d.draw();
+  assert.equal(frames.at(-1).row, 7);
+  d.facts = { presentation: { animation: 'idle' } }; d.previousFrame = null; d.draw();
+  assert.equal(frames.at(-1).row, 9);
   d.dispose();
 });

@@ -17,6 +17,20 @@ function requireText(text) {
   return text;
 }
 
+function samePath(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const normalize = value => value.replaceAll('\\', '/').replace(/\/+$/, '');
+  const left = normalize(a), right = normalize(b);
+  return /^[A-Za-z]:\//.test(left) ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+
+function sessionTitle(row) {
+  if (typeof row.title === 'string' && row.title.trim()) return row.title.trim();
+  // The host's displayTitle falls back to the workspace folder for untitled chats.
+  if (!row.cwd && row.displayTitle) return row.displayTitle;
+  return '未命名会话';
+}
+
 /** These tokens require the host's reference/skill/command input pipeline. */
 export function requiresNativeComposer(text) {
   return /(^|\s)[@$]/u.test(text) || /^\s*\//u.test(text);
@@ -36,18 +50,30 @@ export function createHarnessActions(ctx) {
     const rows = Object.values(list.byId ?? {});
     const current = rows.find(row => (row.retainedBy?.mainView ?? 0) > 0);
     const workspaceState = service(ctx, 'workspaces')?.list?.getSnapshot?.();
-    const workspaces = (workspaceState?.items ?? []).map(item => ({
+    const archived = new Set(workspaceState?.archivedSessionIds ?? []);
+    const workspaces = (workspaceState?.items ?? []).filter(item => !item.archived).map(item => ({
       workspaceId: item.workspaceId,
       path: item.path,
-      sessionIds: [...(item.sessionIds ?? [])],
+      title: item.title || item.path?.split(/[\\/]/).filter(Boolean).at(-1) || item.workspaceId,
+      sessionIds: [...(item.sessionIds ?? [])].filter(id => !archived.has(id)),
     }));
-    const workspace = current ? workspaces.find(item => item.sessionIds.includes(current.id)) : undefined;
+    const allRows = new Map(rows.map(row => [row.id, row]));
+    for (const item of workspaces) for (const id of item.sessionIds) if (!allRows.has(id)) {
+      allRows.set(id, { id, title: list.projectionsBySession?.[id]?.values?.title || '未命名会话' });
+    }
+    const availableSessions = [...allRows.values()].filter(row => !archived.has(row.id) && !row.archived && !row.parentId && row.blank !== true).map(row => {
+      const workspace = workspaces.find(item => item.sessionIds.includes(row.id))
+        ?? workspaces.find(item => samePath(item.path, row.cwd));
+      return { sessionId: row.id, title: sessionTitle(row), workspaceId: workspace?.workspaceId ?? null, updatedAt: row.updatedAt ?? 0 };
+    }).sort((a, b) => (Number(b.updatedAt) || Date.parse(b.updatedAt) || 0) - (Number(a.updatedAt) || Date.parse(a.updatedAt) || 0));
+    const workspace = current ? workspaces.find(item => item.sessionIds.includes(current.id) || samePath(item.path, current.cwd)) : undefined;
     return {
       currentSessionId: current?.id ?? null,
       currentSessionTitle: current?.displayTitle ?? current?.title ?? null,
       currentWorkspaceId: workspace?.workspaceId ?? null,
       currentWorkspacePath: workspace?.path ?? null,
       workspaces,
+      sessions: availableSessions,
       sessionsReady: list.phase === 'ready',
       workspacesReady: workspaceState?.phase === 'ready',
       capabilities: {
@@ -85,7 +111,9 @@ export function createHarnessActions(ctx) {
     const context = getContext();
     if (sessionId != null) {
       requireId(sessionId);
-      const workspace = context.workspaces.find(item => item.sessionIds.includes(sessionId));
+      const session = context.sessions.find(item => item.sessionId === sessionId);
+      if (!session && context.sessionsReady) throw failure('SESSION_UNAVAILABLE', '这个会话已归档或不再可用，请重新选择。');
+      const workspace = context.workspaces.find(item => item.workspaceId === session?.workspaceId);
       return { sessionId, created: false, workspaceId: workspace?.workspaceId ?? null, workspacePath: workspace?.path ?? null };
     }
     const id = workspaceId ?? context.currentWorkspaceId;
@@ -108,7 +136,6 @@ export function createHarnessActions(ctx) {
     requireText(text);
     if (requiresNativeComposer(text)) throw failure('NATIVE_COMPOSER_REQUIRED', '含 @、$ 或命令的内容请使用“在主会话编辑”，通过原生输入栏选择上下文后发送。');
     const result = await target({ sessionId, workspaceId });
-    openSession(result.sessionId);
     await requireSessions().using(result.sessionId, { source: SOURCE }, async reference => {
       const admission = await reference.binding.session.prompt([{ type: 'text', text }], 'queue');
       if (!admission?.ok) throw failure(admission?.error?.code ?? 'PROMPT_FAILED', admission?.error?.message ?? '宿主未接受这条消息。');
@@ -137,6 +164,23 @@ export function createHarnessActions(ctx) {
         // Insert through the public action face; keep any draft, chips, and files.
         const span = input.actions.captureInsertion();
         if (!input.actions.insertText(text, span)) throw failure('COMPOSER_BUSY', '原生输入栏正在处理内容，请稍后重试；原有草稿已保留。');
+      }
+      // Navigation opens the retained session asynchronously. Focus only after
+      // the main view has adopted it and React has mounted its composer.
+      const list = sessions()?.list;
+      if (typeof list?.subscribe === 'function') {
+        await new Promise((resolve, reject) => {
+          const check = () => (list.getSnapshot()?.byId?.[result.sessionId]?.retainedBy?.mainView ?? 0) > 0;
+          if (check()) { resolve(); return; }
+          let off = () => {};
+          const timeout = setTimeout(() => { off(); reject(failure('NAVIGATION_TIMEOUT', '主会话尚未打开，草稿已保留，请在 Harness 中查看。')); }, 5000);
+          const changed = () => { if (check()) { clearTimeout(timeout); off(); resolve(); } };
+          off = list.subscribe(changed);
+          changed();
+        });
+      }
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       }
       input.focus();
     });

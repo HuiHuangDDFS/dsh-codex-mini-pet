@@ -1,3 +1,8 @@
+/** Host stores include class methods; React must not detach their receivers. */
+export function bindExternalSource(source) {
+  return { subscribe: listener => source.subscribe(listener), getSnapshot: () => source.getSnapshot() };
+}
+
 /** Cache one snapshot per underlying Signal identity so React sees stable reads. */
 export function combineSessionSources(sources) {
   let previousValues = [], previous = new Map();
@@ -30,16 +35,18 @@ export function sessionActivitySource(session) {
       const events = session.eventSource?.getSnapshot();
       if (cached && previousSnapshot === snapshot && previousEvents === events) return cached;
       previousSnapshot = snapshot; previousEvents = events;
-      let lastTurnError = null, activityVersion = null;
+      let lastTurnError = null, activityVersion = null, turnEnded = false, turnOutcome = null;
       const entries = events?.entries || [];
       for (let i = entries.length - 1; i >= 0; i--) {
         const event = entries[i].event || entries[i];
         if (!['turn/start', 'turn/end'].includes(event.type)) continue;
         activityVersion = `${event.data?.turn}:${event.seq}`;
+        turnEnded = event.type === 'turn/end';
+        turnOutcome = turnEnded ? event.data?.reason?.kind ?? null : null;
         if (event.type === 'turn/end' && event.data?.reason?.kind === 'error') lastTurnError = event.data.reason.error;
         break;
       }
-      cached = { ...snapshot, lastTurnError, activityVersion };
+      cached = { ...snapshot, lastTurnError, activityVersion, turnEnded, turnOutcome };
       return cached;
     },
   };

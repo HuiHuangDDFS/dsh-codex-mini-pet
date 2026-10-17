@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ANIMATIONS, CELL, activityRows, clampPosition, frameFor, gazeForPoint, resolveAssetUrl, taskPresentation } from './client-model.mjs';
-import { combineSessionSources, sessionActivitySource } from './activity-source.mjs';
+import { bindExternalSource, combineSessionSources, sessionActivitySource } from './activity-source.mjs';
 import { createHarnessActions } from './harness-actions.mjs';
 import { PetDock, dockCss } from './pet-dock.jsx';
 import { registerPetShortcut } from './shortcuts.mjs';
+import { createCompletionTracker, inwardBubblePosition } from './companion-behavior.mjs';
 import { UiButton, UiInput, UiSwitch, UiTabs, setNativeUi, settingsCss } from './native-ui.jsx';
 
 const nativeKit = DSH_PET_PREVIEW ? null : require('@deepseek-ai/dsh-client-ui-primitives');
@@ -16,6 +17,7 @@ const emptySource = value => ({ getSnapshot: () => value, subscribe: () => () =>
 const EMPTY_SESSION_SOURCE = emptySource(EMPTY_SESSIONS);
 const EMPTY_STATUS_SOURCE = emptySource(EMPTY_STATUS);
 const EMPTY_ACTIVE_SOURCE = emptySource(null);
+const EMPTY_WORKSPACE_SOURCE = emptySource(null);
 const API_ROOT = () => new URL('dsh-hide-pet/api/', document.baseURI);
 
 const css = `
@@ -24,7 +26,7 @@ const css = `
 `;
 
 function useSource(source, fallback) {
-  const actual = source || fallback;
+  const actual = useMemo(() => bindExternalSource(source || fallback), [source, fallback]);
   return useSyncExternalStore(actual.subscribe, actual.getSnapshot, actual.getSnapshot);
 }
 
@@ -112,6 +114,9 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const [chatFocus, setChatFocus] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [osReduced, setOsReduced] = useState(false);
+  const [completions, setCompletions] = useState([]);
+  const [completionBubble, setCompletionBubble] = useState(null);
+  const completionTracker = useRef(createCompletionTracker());
   const mounted = useRef(true);
   const stateRef = useRef(state);
   const requestRef = useRef(null);
@@ -126,6 +131,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const native = useMemo(() => createHarnessActions(ctx), [ctx]);
   const sessions = useSource(ctx.sessions?.list, EMPTY_SESSION_SOURCE);
   const statuses = useSource(ctx.uiSession?.sessionStatus, EMPTY_STATUS_SOURCE);
+  useSource(ctx.workspaces?.list, EMPTY_WORKSPACE_SOURCE);
   const ids = [...new Set([...Object.keys(sessions.byId || {}), ...statuses.keys()])].sort().join('\u0000');
   const sessionSources = useMemo(() => combineSessionSources(ids.split('\u0000').filter(Boolean).flatMap(id => {
     const source = ctx.sessions?.binding?.(id)?.session;
@@ -141,7 +147,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const presentation = taskPresentation(sessions, statuses, null, facts);
   const prefs = state.preferences || {};
   const desktopSurface = Boolean(state.desktop?.active && prefs.surface !== 'app');
-  desktopFacts.current = { presentation: { animation: presentation.animation, label: presentation.label }, rows: rows.map(({ id, title, state, label }) => ({ id, title, state, label })), osReduced, context: native.getContext() };
+  desktopFacts.current = { presentation: { animation: presentation.animation, label: presentation.label }, rows: rows.map(({ id, title, state, label }) => ({ id, title, state, label })), completions, osReduced, context: native.getContext() };
   const pet = state.pets.find(item => item.id === prefs.selectedPetId) || state.pets[0];
   const scale = Number.isFinite(prefs.scale) ? prefs.scale : .72;
   const size = { width: CELL.width * scale, height: CELL.height * scale };
@@ -149,6 +155,21 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   const visible = prefs.visible !== false;
   const mini = prefs.mode === 'mini';
   const currentPosition = clampPosition(position || prefs.position, { width: window.innerWidth, height: window.innerHeight }, size);
+  const completionPosition = inwardBubblePosition({ ...currentPosition, ...size }, { width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    if (settingsOnly) return;
+    const notices = completionTracker.current(activityRows(sessions, statuses, facts, { includeIdle: true }));
+    if (notices.length) {
+      setCompletions(previous => [...previous.filter(item => item.expiresAt > Date.now()), ...notices].slice(-10));
+      setCompletionBubble(notices.at(-1));
+    }
+  }, [settingsOnly, sessions, statuses, facts]);
+  useEffect(() => {
+    if (!completionBubble) return;
+    const timeout = setTimeout(() => setCompletionBubble(null), 8000);
+    return () => clearTimeout(timeout);
+  }, [completionBubble]);
 
   const acceptState = result => {
     const next = result?.state || result;
@@ -222,8 +243,8 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
         replies = [];
         for (const event of result.events || []) {
           try {
-            if (event.type === 'send-chat') await native.sendMessage({ text: event.text });
-            else if (event.type === 'edit-chat') await native.openMainComposer({ text: event.text });
+            if (event.type === 'send-chat') await native.sendMessage({ text: event.text, workspaceId: event.workspaceId, sessionId: event.sessionId });
+            else if (event.type === 'edit-chat') await native.openMainComposer({ text: event.text, workspaceId: event.workspaceId, sessionId: event.sessionId });
             else if (event.type === 'open-session') native.openSession(event.sessionId);
             else if (event.type === 'open-settings') {
               const entry = ctx.slots.entries('sidebar.settings').find(item => item.options?.store?.create);
@@ -394,7 +415,7 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
   };
   const createPet = () => nativePrompt(native.createPetPrompt());
   const actualAnimation = dragging ? dragAnimation : interaction || (hover && presentation.animation === 'idle' ? 'jumping' : presentation.animation);
-  const actualGaze = !dragging && !interaction && !hover && ['idle', 'running', 'waving'].includes(presentation.animation) ? gaze : null;
+  const actualGaze = !dragging && !interaction && !hover && presentation.animation === 'idle' ? gaze : null;
 
   return <div className={`dhp-root${settingsOnly ? ' dhp-settings' : ''}`} data-dsh-hide-pet="true">
     <style>{css + dockCss + `.dhp-settings{position:relative;inset:auto;pointer-events:auto;width:100%;height:100%;min-width:0}.dhp-settings .dhp-panel{position:static;width:100%;max-width:none;max-height:none;overflow:visible;border:0;border-radius:0;box-shadow:none;animation:none}.dhp-settings .dhp-head{padding:0 0 18px}.dhp-settings .dhp-tabs{margin:0 0 18px}.dhp-settings .dhp-body{padding:0 0 24px}.dhp-settings .dhp-head h2{font-size:20px}.dhp-settings .dhp-art-stage{height:125px}`}</style><style>{settingsCss}</style>
@@ -416,7 +437,8 @@ export function PetApp({ ctx, settingsOnly = false, closeSettings }) {
       <div className="dhp-pet-bubble">{presentation.label} · {pet.name}</div>
       <Sprite pet={pet} animation={actualAnimation} gaze={actualGaze} scale={scale} reducedMotion={reduced} />
     </div>}
-    {!settingsOnly && !desktopSurface && visible && <PetDock ctx={ctx} rows={rows} mini={mini} focusRequest={chatFocus} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
+    {!settingsOnly && !desktopSurface && visible && <PetDock ctx={ctx} rows={rows} mini={mini} reducedMotion={reduced} focusRequest={chatFocus} petBounds={{ ...currentPosition, ...size }} position={{ x: currentPosition.x, y: currentPosition.y + (mini ? 0 : size.height) }} onPreferences={preferences} />}
+    {!settingsOnly && !desktopSurface && visible && completionBubble && <aside className="dhp-completion" data-side={completionPosition.side} data-reduced={reduced} role="status" style={{ left: completionPosition.x, top: completionPosition.y }}><button aria-label="关闭完成提醒" onClick={() => setCompletionBubble(null)}>×</button><strong>任务完成啦</strong><button className="dhp-completion-open" onClick={() => { native.openSession(completionBubble.sessionId); setCompletionBubble(null); }}><span>{completionBubble.title}</span><small>查看结果 ›</small></button></aside>}
     {menu && <div className="dhp-menu" role="menu" style={{ left: Math.max(8, menu.x), top: Math.max(8, menu.y) }}>
       <small>{pet?.name} · {presentation.label}</small>
       <button role="menuitem" onClick={() => { play('waving'); setMenu(null); }}>向我打招呼</button>

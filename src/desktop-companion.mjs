@@ -70,6 +70,7 @@ export class DesktopCompanion {
         type: 'state', preferences: { ...state.preferences, reducedMotion: Boolean(state.preferences.reducedMotion || this.facts.osReduced) }, name: pet.name,
         label: this.facts.presentation?.label || '随时准备好', rows: (this.facts.rows || []).slice(0, 30),
         context: this.facts.context || {}, theme: this.facts.theme || {},
+        completions: (this.facts.completions || []).slice(-10),
       };
       const serialized = JSON.stringify(value);
       if (serialized !== this.previousState) { this.send(value); this.previousState = serialized; }
@@ -82,7 +83,7 @@ export class DesktopCompanion {
     if (this.animation !== next) { this.animation = next; this.started = Date.now(); }
     const frame = frameFor(next, Date.now() - this.started, {
       reducedMotion: Boolean(this.preferences.reducedMotion || this.facts.osReduced),
-      gaze: this.dragging || this.preferences.followPointer === false || Date.now() < (this.interactionUntil || 0) ? null : this.gaze,
+      gaze: this.dragging || base !== 'idle' || this.preferences.followPointer === false || Date.now() < (this.interactionUntil || 0) ? null : this.gaze,
       version: this.imageVersion || 2,
       loop: Boolean(this.dragging),
     });
@@ -109,7 +110,8 @@ export class DesktopCompanion {
       this.store.preferences(safe).then(() => this.refresh()).catch(error => { this.error = error.message; }); return;
     }
     if (!['open-settings', 'open-session', 'send-chat', 'edit-chat'].includes(message.type)) return;
-    if (['send-chat', 'edit-chat'].includes(message.type) && (typeof message.text !== 'string' || message.text.length > 64000 || !message.text.trim())) return;
+    if (message.sessionId != null && (typeof message.sessionId !== 'string' || message.sessionId.length > 1000)) return;
+    if (['send-chat', 'edit-chat'].includes(message.type) && (typeof message.text !== 'string' || message.text.length > 64000 || (message.type === 'send-chat' && !message.text.trim()) || (message.workspaceId != null && (typeof message.workspaceId !== 'string' || message.workspaceId.length > 1000)))) return;
     if (this.events.length >= 20) return;
     this.events.push({ ...message, id: String(++this.sequence) });
   }

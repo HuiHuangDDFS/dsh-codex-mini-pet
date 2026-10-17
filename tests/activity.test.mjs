@@ -1,7 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { activityRows, taskPresentation } from '../src/client-model.mjs';
-import { combineSessionSources, sessionActivitySource } from '../src/activity-source.mjs';
+import { bindExternalSource, combineSessionSources, sessionActivitySource } from '../src/activity-source.mjs';
+
+test('React adapters retain the receiver of real host store class methods', () => {
+  class HostStore {
+    value = { items: [{ workspaceId: 'live' }] }; listeners = new Set();
+    getSnapshot() { return this.value; }
+    subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  }
+  const store = new HostStore(), { getSnapshot, subscribe } = bindExternalSource(store);
+  assert.equal(getSnapshot(), store.value);
+  let observed; const off = subscribe(() => { observed = getSnapshot(); });
+  store.value = { items: [] }; for (const fn of store.listeners) fn();
+  assert.equal(observed, store.value); off(); assert.equal(store.listeners.size, 0);
+});
 
 const sessions = { byId: {
   working: { id: 'working', title: '当前工作', retainedBy: { mainView: 1 } },
@@ -9,6 +22,16 @@ const sessions = { byId: {
   failed: { id: 'failed', title: '发生错误' },
   done: { id: 'done', title: '完成结果' },
 } };
+test('live stopped status overrides a stale running list row and exposes completion or failure', () => {
+  const stale = { byId: { one: { id: 'one', running: true } } };
+  const statuses = new Map([['one', { running: false, completionUnread: true }]]);
+  const [done] = activityRows(stale, statuses);
+  assert.equal(done.state, 'ready'); assert.equal(done.running, false);
+  const [failed] = activityRows(stale, statuses, new Map([['one', { lastTurnError: 'failed' }]]));
+  assert.equal(failed.state, 'blocked'); assert.equal(failed.running, false);
+  assert.deepEqual(activityRows(stale, new Map([['one', { running: false }]])), []);
+  assert.equal(activityRows(stale, new Map(), new Map([['one', { running: false }]])).length, 0);
+});
 test('all-chat activity prioritizes needs input, blocked, ready, running and identifies the actual target', () => {
   const statuses = new Map([['working', { running: true }], ['waiting', { pendingInteraction: { kind: 'approval' } }], ['done', { completionUnread: true }]]);
   const facts = new Map([['failed', { lastAgentError: '模型失败' }]]);
