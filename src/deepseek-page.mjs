@@ -4,17 +4,32 @@ import { chatSession } from './work-chat-model.mjs';
 function findConversationShareControl() {
   if (!/^\/a\/[a-zA-Z0-9_-]+\/s\/[a-zA-Z0-9_-]+\/?$/.test(location.pathname)) return null;
   const excluded = '[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,.ds-modal-wrapper,.ds-modal';
-  const marked = [...document.querySelectorAll('button[data-dhp-site-share],[role="button"][data-dhp-site-share]')]
-    .find(element => !element.closest(excluded));
+  const candidates = [...new Set([
+    ...document.querySelectorAll('button,[role="button"]'),
+    // DeepSeek's icon controls may be clickable .ds-icon-button divs with no button role.
+    ...document.querySelectorAll('.ds-icon-button'),
+  ])];
+  const marked = candidates
+    .find(element => Object.hasOwn(element.dataset,'dhpSiteShare') && !element.closest(excluded));
   // The stylesheet hides a known header action; retain it across repeated scans and use its original click handler.
   if (marked) return marked;
   const pattern = /\bshare\b|分享/i;
-  return [...document.querySelectorAll('button,[role="button"]')].find(element => {
+  const controls = candidates.filter(element => {
     if (element.closest(excluded)) return false;
     const label = [...['aria-label','title','data-tooltip-content','data-testid'].map(name => element.getAttribute(name) || ''),element.textContent || ''].join(' ');
     const box = element.getBoundingClientRect();
     return pattern.test(label) && box.width > 0 && box.height > 0 && box.height <= 65 && box.top >= 0 && box.top < 100 && box.right >= innerWidth * .8;
-  }) || null;
+  });
+  if (controls.length) return controls[0];
+  // DeepSeek can render the official share icon without an accessible label. On a conversation route,
+  // the unlabeled icon is the small, rightmost SVG control in the page's top bar.
+  return candidates
+    .filter(element => {
+      if (element.closest(excluded) || !element.querySelector('svg')) return false;
+      const box = element.getBoundingClientRect();
+      return box.width >= 20 && box.width <= 64 && box.height >= 20 && box.height <= 64 && box.top >= 0 && box.top < 85 && box.right >= innerWidth * .92;
+    })
+    .sort((a,b) => b.getBoundingClientRect().right-a.getBoundingClientRect().right)[0] || null;
 }
 
 /** Presentation-only integration: remove duplicate website navigation, keep its DOM for official actions. */
@@ -64,7 +79,13 @@ export function compactDeepSeekChrome(findShareControl = findConversationShareCo
   }
   if (currentTitle) {
     const exclusions = 'a,button,[role="button"],[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,article,[role="article"],[data-message-id],[data-testid*="message"],.ds-modal-wrapper,.ds-modal';
-    const inHeader = element => !element.closest(exclusions) && !!element.closest('header,[role="banner"],[data-dhp-session-header]');
+    const inHeader = element => {
+      if (element.closest(exclusions)) return false;
+      if (element.closest('header,[role="banner"],[data-dhp-session-header]')) return true;
+      // The website's conversation title is sometimes rendered in a plain content row with no header role.
+      const box = element.getBoundingClientRect();
+      return box.top >= 0 && box.top < 85 && box.height > 0 && box.height <= 55;
+    };
     // Reuse the hidden title: its zero-sized box must not make the next poll search for another matching text node.
     const markedHeading = [...document.querySelectorAll('[data-dhp-session-heading]')].find(element =>
       inHeader(element) && (element.dataset.dhpSessionHeading === currentPath || element.textContent.replace(/\s+/g,' ').trim() === currentTitle));
