@@ -13,7 +13,7 @@ npm test
 npm pack
 ```
 
-也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-codex-mini-pet-2.0.1.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
+也可从 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) 下载已构建的安装包。桌面版在“设置 → 插件管理器”中安装本地 `dsh-codex-mini-pet-2.0.2.tgz`。宿主的 `plugin_manager` / `install_bundle` 也是官方插件管理入口。新安装的 bundle 默认启用；已存在但被禁用的同名 bundle 需要在管理器中启用。
 
 普通 Web profile 可使用 `dsh plugin --profile <实际profile名称> add <本地tgz>`。桌面 profile 需先用桌面应用初始化并完全退出，再用安装包自带的 `resources/runtime/cli/bin/dsh.cmd plugin --profile desktop add <本地tgz>` 安装；普通开源 CLI 不具有桌面配置管理权限。也可使用应用内插件管理器。使用打包后的 tgz；Windows 宿主包管理器在将源码目录链接替换为安装包时可能影响链接目标，不要把源码目录作为宿主的链接依赖。
 

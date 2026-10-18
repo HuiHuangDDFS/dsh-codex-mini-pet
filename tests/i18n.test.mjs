@@ -39,13 +39,14 @@ test('translations interpolate safely and keep unknown titles and user text inta
   assert.equal(zh(en('已加入宠物库')), '已加入宠物库', 'existing notices can switch back to Chinese');
 });
 
-test('every static browser translation and animation/status label has an English entry', async () => {
+test('static browser labels and built-in pet descriptions have an English entry', async () => {
   const { ANIMATIONS, ACTIVITY_STATES } = await import('../src/client-model.mjs');
   const required = new Set([...ANIMATIONS.map(item => item.label), ...Object.values(ACTIVITY_STATES).map(item => item.label)]);
   for (const file of ['client-entry.jsx', 'native-ui.jsx', 'pet-dock.jsx', 'work-chat.jsx']) {
     const source = await fs.readFile(new URL(`../src/${file}`, import.meta.url), 'utf8');
     for (const match of source.matchAll(/\bt\(\s*(['"])([^'"\n]+)\1/g)) required.add(match[2]);
   }
+  for (const pet of await new PetStore().builtins()) required.add(pet.description);
   for (const key of required) {
     assert.equal(typeof ENGLISH_MESSAGES[key], 'string', `missing English translation: ${key}`);
     assert.equal(/\p{Script=Han}/u.test(ENGLISH_MESSAGES[key]), false, `untranslated entry: ${key}`);

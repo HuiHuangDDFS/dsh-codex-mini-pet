@@ -1,4 +1,4 @@
-import { COMPACT_CHROME_SCRIPT, conversationNavigationScript, managementScript } from './deepseek-page.mjs';
+import { COMPACT_CHROME_SCRIPT, SHARE_CONVERSATION_SCRIPT, conversationNavigationScript, managementScript } from './deepseek-page.mjs';
 import { CHAT_PARTITION_KEY, DEEPSEEK_HOME, chatDestination } from './work-chat-model.mjs';
 
 // Read only the visible website's navigation metadata. Never inspect storage or credentials.
@@ -72,6 +72,12 @@ export function createDeepSeekGuest({ bridge, host, report, observe, document: d
       const result=await element.executeJavaScript(script);
       if (!result?.ok) throw new Error(result?.error || '网页操作未完成，请重试。');
       await scan(); return result;
+    },
+    async share() {
+      if (!ready || !element || !chatDestination(element.getURL())) throw new Error('请等待 DeepSeek 网页加载完成。');
+      const result=await element.executeJavaScript(SHARE_CONVERSATION_SCRIPT);
+      if (!result?.ok) throw new Error(result?.error || '暂时找不到官网分享按钮，请确认会话页面已加载。');
+      return result;
     },
     async reload() {
       if (ready) { report({status:'loading',error:''}); try { element.reload(); } catch(error) { fail(error); } return; }

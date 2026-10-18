@@ -39,6 +39,8 @@ export const ENGLISH_MESSAGES = Object.freeze({
   "与工作区分开，连接 DeepSeek 官方网页。": "Separate from workspaces, connected to the official DeepSeek website.",
   "DeepSeek 聊天模式": "DeepSeek chat mode",
   "刷新网页": "Reload website",
+  "分享聊天": "Share chat",
+  "暂时找不到官网分享按钮，请确认会话页面已加载。": "The official share button is unavailable. Make sure a conversation is open.",
   "正在打开 DeepSeek 官方网页…": "Opening the official DeepSeek website…",
   "DeepSeek 官方网页": "Official DeepSeek website",
   "请在官网使用与 Harness 相同的账号登录。": "Sign in on the official website with the same account you use in Harness.",
@@ -68,6 +70,7 @@ export const ENGLISH_MESSAGES = Object.freeze({
   '设置 › codex-mini-pet 中管理形象': 'Manage characters in Settings › codex-mini-pet',
   '原创蓝白鲸鱼娘 Q 版桌面伙伴：鲸鱼帽、深蓝短发与白色刘海，支持九类动作和十六方向注视。': 'An original blue-and-white whale companion with a whale hat, dark-blue hair and white bangs. Nine animations and sixteen gaze directions.',
   '用户选定的智域风格 Q 版桌面伙伴，复用已批准的白发黑衣宠物图集。': 'A Zhiyu-style companion with white hair and a black outfit, using the approved character sprite sheet.',
+  '基于用户提供设定图的蓝发鲸鱼女仆风 Q 版桌面伙伴，支持九类动作和十六方向注视。': 'A blue-haired, whale-and-maid-inspired chibi companion based on the user-provided character sheet, with nine animations and sixteen gaze directions.',
 
   '语言': 'Language',
   '选择界面语言，立即生效。': 'Choose the interface language. Changes apply immediately.',

@@ -1,11 +1,42 @@
 import { chatSession } from './work-chat-model.mjs';
 
+/** Identify the conversation header's official action, never a dialog action or an arbitrary icon. */
+function findConversationShareControl() {
+  if (!/^\/a\/[a-zA-Z0-9_-]+\/s\/[a-zA-Z0-9_-]+\/?$/.test(location.pathname)) return null;
+  const excluded = '[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,.ds-modal-wrapper,.ds-modal';
+  const marked = [...document.querySelectorAll('button[data-dhp-site-share],[role="button"][data-dhp-site-share]')]
+    .find(element => !element.closest(excluded));
+  // The stylesheet hides a known header action; retain it across repeated scans and use its original click handler.
+  if (marked) return marked;
+  const pattern = /\bshare\b|分享/i;
+  return [...document.querySelectorAll('button,[role="button"]')].find(element => {
+    if (element.closest(excluded)) return false;
+    const label = [...['aria-label','title','data-tooltip-content','data-testid'].map(name => element.getAttribute(name) || ''),element.textContent || ''].join(' ');
+    const box = element.getBoundingClientRect();
+    return pattern.test(label) && box.width > 0 && box.height > 0 && box.height <= 65 && box.top >= 0 && box.top < 100 && box.right >= innerWidth * .8;
+  }) || null;
+}
+
 /** Presentation-only integration: remove duplicate website navigation, keep its DOM for official actions. */
-export function compactDeepSeekChrome() {
+export function compactDeepSeekChrome(findShareControl = findConversationShareControl) {
   if (location.origin !== 'https://chat.deepseek.com' || /^\/(sign_in|sign_up|forgot_password|mobile_verification)/.test(location.pathname)) return false;
+  const currentPath = location.pathname.replace(/\/$/, '');
+  const currentConversation = [...document.querySelectorAll('a[href]')].find(a => {
+    try { const url = new URL(a.href); return url.origin === location.origin && url.pathname.replace(/\/$/, '') === currentPath; }
+    catch { return false; }
+  });
+  const currentTitle = (currentConversation?.getAttribute('title') || currentConversation?.textContent || '').replace(/\s+/g, ' ').trim();
+  const shareButton = findShareControl();
+  // Some website headers use plain divs. A short, wide row containing its known share action is also a header.
+  for (let parent=shareButton?.parentElement, step=0;parent && step<8;step++,parent=parent.parentElement) {
+    const box=parent.getBoundingClientRect();
+    if (box.top >= 0 && box.top < 100 && box.height > 0 && box.height <= 100 && box.width >= innerWidth*.5) {
+      parent.dataset.dhpSessionHeader=''; break;
+    }
+  }
   if (!document.getElementById('dhp-deepseek-chrome')) {
     const style = document.createElement('style'); style.id = 'dhp-deepseek-chrome';
-    style.textContent = '[data-dhp-site-chrome], [data-dhp-site-sidebar]{display:none!important}'; document.head.append(style);
+    style.textContent = '[data-dhp-site-chrome], [data-dhp-site-sidebar], [data-dhp-session-heading], [data-dhp-site-share]{display:none!important}'; document.head.append(style);
   }
   const buttons = [...document.querySelectorAll('button,[role=button]')].filter(element => {
     const box = element.getBoundingClientRect(); return box.width > 0 && box.left < 260 && box.top >= 0 && box.top < 65 && box.height < 65;
@@ -31,9 +62,41 @@ export function compactDeepSeekChrome() {
       parent.dataset.dhpSiteSidebar=''; break;
     }
   }
+  if (currentTitle) {
+    const exclusions = 'a,button,[role="button"],[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,article,[role="article"],[data-message-id],[data-testid*="message"],.ds-modal-wrapper,.ds-modal';
+    const inHeader = element => !element.closest(exclusions) && !!element.closest('header,[role="banner"],[data-dhp-session-header]');
+    // Reuse the hidden title: its zero-sized box must not make the next poll search for another matching text node.
+    const markedHeading = [...document.querySelectorAll('[data-dhp-session-heading]')].find(element =>
+      inHeader(element) && (element.dataset.dhpSessionHeading === currentPath || element.textContent.replace(/\s+/g,' ').trim() === currentTitle));
+    const heading = markedHeading || [...document.querySelectorAll('h1,h2,h3,[role="heading"],div,span,p')]
+      .filter(element => {
+        if (!inHeader(element)) return false;
+        if (element.textContent.replace(/\s+/g, ' ').trim() !== currentTitle) return false;
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && box.height <= 65 && box.top >= 0 && box.top < 100;
+      })
+      .sort((a,b) => {
+        const semantic = element => /^(H1|H2|H3)$/.test(element.tagName) || element.getAttribute('role') === 'heading';
+        if (semantic(a) !== semantic(b)) return semantic(a) ? -1 : 1;
+        const aa=a.getBoundingClientRect(), bb=b.getBoundingClientRect(); return aa.width*aa.height-bb.width*bb.height;
+      })[0];
+    if (heading) heading.dataset.dhpSessionHeading=currentPath;
+  }
+  if (shareButton) shareButton.dataset.dhpSiteShare='';
   return true;
 }
-export const COMPACT_CHROME_SCRIPT = `(${compactDeepSeekChrome.toString()})()`;
+// Pass the serialized finder explicitly so each guest script is self-contained after bundling.
+export const COMPACT_CHROME_SCRIPT = `(${compactDeepSeekChrome.toString()})(${findConversationShareControl.toString()})`;
+
+/** Open the website's own share flow from the extension toolbar. */
+export function shareConversationOnPage(findShareControl = findConversationShareControl) {
+  if (location.origin !== 'https://chat.deepseek.com') return {ok:false,error:'请先打开 DeepSeek 官方聊天页面。'};
+  const button = findShareControl();
+  if (!button || button.disabled) return {ok:false,error:'暂时找不到官网分享按钮，请确认会话页面已加载。'};
+  button.click();
+  return {ok:true};
+}
+export const SHARE_CONVERSATION_SCRIPT = `(${shareConversationOnPage.toString()})(${findConversationShareControl.toString()})`;
 
 /** Let the official router change conversations without reloading the guest document. */
 export function conversationNavigationScript(value) {

@@ -9,7 +9,7 @@ import lockfile from 'proper-lockfile';
 
 export const ASSET_ROOT = fileURLToPath(new URL('../assets/pets/', import.meta.url));
 export const DEFAULT_DATA_DIR = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'hide-pet');
-const DEFAULT_PREFERENCES = { selectedPetId: 'whale-girl', language: 'zh-CN', visible: true, mode: 'pet', surface: 'desktop', desktopPosition: null, visibilityBehavior: 'always', scale: 0.72, reducedMotion: false, position: null, followPointer: true };
+const DEFAULT_PREFERENCES = { selectedPetId: 'deepseek', language: 'zh-CN', visible: true, mode: 'pet', surface: 'desktop', desktopPosition: null, visibilityBehavior: 'always', scale: 0.72, reducedMotion: false, position: null, followPointer: true };
 const safeId = value => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value);
 const safeSpriteName = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,191}\.(png|webp)$/i.test(value);
 const text = (value, max, label) => { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new Error(`${label}不能为空且不能超过 ${max} 字。`); return value.trim(); };
@@ -18,8 +18,8 @@ async function atomicWrite(target, bytes) {
   try { await fs.writeFile(temporary, bytes, { mode: 0o600 }); await fs.rename(temporary, target); }
   finally { await fs.rm(temporary, { force: true }); }
 }
-async function spriteForPet(pet) {
-  const file = pet.spritesheet || 'spritesheet.png';
+async function spriteForPet(pet, render = false) {
+  const file = (render && pet.renderSpritesheet) || pet.spritesheet || 'spritesheet.png';
   if (!safeSpriteName(file)) throw new Error('图集路径无效。');
   return { bytes: await fs.readFile(path.join(pet.directory, file)), type: /\.webp$/i.test(file) ? 'image/webp' : 'image/png' };
 }
@@ -65,16 +65,24 @@ export class PetStore {
       try { const manifest = JSON.parse(await fs.readFile(path.join(this.assetRoot, entry.name, 'pet.json'), 'utf8')); if (!safeId(manifest.id)) continue; result.push({ ...manifest, spriteVersion: manifest.spriteVersion ?? manifest.spriteVersionNumber ?? 2, builtin: true, directory: path.join(this.assetRoot, entry.name) }); }
       catch (e) { throw new Error(`内置宠物 ${entry.name} 的清单无法读取：${e.message}`); }
     }
-    return result.sort((a, b) => a.id === 'whale-girl' ? -1 : b.id === 'whale-girl' ? 1 : a.name.localeCompare(b.name));
+    const builtinOrder = ['deepseek', 'whale-girl'];
+    return result.sort((a, b) => {
+      const aIndex = builtinOrder.indexOf(a.id), bIndex = builtinOrder.indexOf(b.id);
+      if (aIndex !== bIndex) return (aIndex < 0 ? Infinity : aIndex) - (bIndex < 0 ? Infinity : bIndex);
+      return a.name.localeCompare(b.name);
+    });
   }
   async list() { const state = await this.read(); return [...await this.builtins(), ...Object.values(state.pets).map(p => ({ ...p, builtin: false, directory: path.join(this.dataDir, 'pets', p.id) }))].map(p => ({ ...p, ...state.overrides?.[p.id] })); }
   async get(id) { if (!safeId(id)) throw new Error('宠物 ID 无效。'); const pet = (await this.list()).find(p => p.id === id); if (!pet) throw new Error('找不到该宠物。'); return pet; }
-  async sprite(id) { return spriteForPet(await this.get(id)); }
+  async sprite(id) { return spriteForPet(await this.get(id), true); }
   async snapshot() {
     const [state, pets] = await Promise.all([this.read(), this.list()]);
     const preferences = { ...DEFAULT_PREFERENCES, ...state.preferences };
     if (!pets.some(p => p.id === preferences.selectedPetId)) preferences.selectedPetId = pets[0]?.id ?? null;
-    return { pets: pets.map(({ directory, ...p }) => ({ ...p, spritesheetUrl: `dsh-hide-pet/sprites/${encodeURIComponent(p.id)}${p.sha256 ? `?v=${encodeURIComponent(p.sha256)}` : ''}` })), preferences };
+    return { pets: pets.map(({ directory, ...p }) => {
+      const hash = p.renderSha256 || p.sha256;
+      return { ...p, spritesheetUrl: `dsh-hide-pet/sprites/${encodeURIComponent(p.id)}${hash ? `?v=${encodeURIComponent(hash)}` : ''}` };
+    }), preferences };
   }
   async preferences(patch) {
     if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('偏好设置必须是对象。');
@@ -176,5 +184,5 @@ export class PetStore {
     if (!safeSpriteName(spriteName)) throw new Error('图集路径无效。');
     return this.importBytes(manifest, await fs.readFile(path.join(directory, spriteName)));
   }
-  async export(id) { const pet = await this.get(id); const { bytes } = await spriteForPet(pet); const { directory, builtin, spritesheetUrl, ...manifest } = pet; return Buffer.from(zipSync({ 'pet.json': strToU8(JSON.stringify(manifestAliases(manifest), null, 2)), [manifest.spritesheet || 'spritesheet.png']: bytes }, { level: 6 })); }
+  async export(id) { const pet = await this.get(id); const { bytes } = await spriteForPet(pet); const { directory, builtin, spritesheetUrl, renderSpritesheet, renderSha256, renderScale, ...manifest } = pet; return Buffer.from(zipSync({ 'pet.json': strToU8(JSON.stringify(manifestAliases(manifest), null, 2)), [manifest.spritesheet || 'spritesheet.png']: bytes }, { level: 6 })); }
 }

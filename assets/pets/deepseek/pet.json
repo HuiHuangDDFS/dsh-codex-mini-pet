@@ -1,0 +1,100 @@
+{
+  "id": "deepseek",
+  "name": "deepseek",
+  "description": "基于用户提供设定图的蓝发鲸鱼女仆风 Q 版桌面伙伴，支持九类动作和十六方向注视。",
+  "spriteVersion": 2,
+  "sha256": "689c6660df0a4d44d2f482e9826ab96da3245812b7766a842cc1c4a8a846e47a",
+  "spritesheet": "spritesheet.png",
+  "preview": "preview.png",
+  "author": "AI-generated for the dsh-codex-mini-pet project",
+  "license": "LicenseRef-ProjectAsset",
+  "source": {
+    "type": "ai-generated-from-user-reference",
+    "tool": "built-in image_gen",
+    "generatedOn": "2026-10-18",
+    "officialDeepSeekArtwork": false,
+    "provenance": "provenance.md",
+    "referenceFilename": "codex-clipboard-11485148-6e9c-46ec-b9e1-9ada19211cd3.jpg",
+    "referenceSha256": "9d85b3da1eec644b294716da49c01cb09935f7f410c6442f87cad3b7cf4978c0",
+    "stateSourceSha256": "b35a19513f65d9c21dd37517e2b821b245490482f8e8c68620724ca54a27ff2b",
+    "gazeSourceSha256": "e0b7be3ce606e76db35aad24f5a09b0f9a45e2359ef2e134d9d02885a1840475",
+    "highResolutionGenerations": [
+      {
+        "name": "actions-1",
+        "sha256": "44131091df699b4efe5c5deee5dd06b530d38028a56d4c8e75ad8264b566b217",
+        "width": 1254,
+        "height": 1254,
+        "columns": 4,
+        "frames": 16
+      },
+      {
+        "name": "actions-2",
+        "sha256": "2fbe57f6aa3818f012bab69c9c5141b622aeb5518baf2bee789bf3639e36bdf6",
+        "width": 1254,
+        "height": 1254,
+        "columns": 4,
+        "frames": 16
+      },
+      {
+        "name": "actions-3",
+        "sha256": "ab2733a6d28750ce30774c6e9de90b46e95a78ec821304352b1f44cfd19efdf5",
+        "width": 1254,
+        "height": 1254,
+        "columns": 4,
+        "frames": 16
+      },
+      {
+        "name": "actions-4",
+        "sha256": "233ad1d896c73707e8f58558673f5d391c47c242197f52298342d0ba3d73b5cd",
+        "width": 1254,
+        "height": 1254,
+        "columns": 3,
+        "frames": 9
+      },
+      {
+        "name": "gaze",
+        "sha256": "369b6ff278ee4c020134326e092862d6ac59206927b1328ca2905e0e176856f1",
+        "width": 1254,
+        "height": 1254,
+        "columns": 4,
+        "frames": 16
+      }
+    ],
+    "highResolutionPrompts": "hd-prompts.md"
+  },
+  "artwork": {
+    "width": 1536,
+    "height": 2288,
+    "columns": 8,
+    "rows": 11,
+    "cellWidth": 192,
+    "cellHeight": 208,
+    "frameCounts": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6,
+      8,
+      8
+    ],
+    "gazeOrder": "clockwise, screen up at 0, right at 4, down at 8, left at 12",
+    "quality": "AI-generated discrete poses based on the user-provided concept sheet; head gaze angles are approximate; see provenance.",
+    "safeMargin": 12,
+    "packing": "packing.json",
+    "render": {
+      "width": 3072,
+      "height": 4576,
+      "cellWidth": 384,
+      "cellHeight": 416,
+      "safeMargin": 24
+    }
+  },
+  "renderSpritesheet": "spritesheet-2x.png",
+  "renderSha256": "a60d6726fde21d825a0b4e40adcd2a675f1642d67bb52b3a2eab1f8cb13b7020",
+  "renderScale": 2
+}

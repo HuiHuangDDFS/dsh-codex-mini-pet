@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CHAT_PANEL, DEEPSEEK_HOME, chatDestination, chatSession, normalizeChatRows, createWorkChatController } from '../src/work-chat-model.mjs';
 import { CHAT_NAVIGATION_SCRIPT, createDeepSeekGuest } from '../src/deepseek-guest.mjs';
+import { COMPACT_CHROME_SCRIPT, SHARE_CONVERSATION_SCRIPT } from '../src/deepseek-page.mjs';
 
 test('chat navigation admits only the official HTTPS origin and history admits only conversation routes', () => {
   for (const url of [null, undefined, '', 'https://evil.example/a/chat/s/123', '//evil.example/', 'javascript:alert(1)', 'http://chat.deepseek.com/', 'https://user:password@chat.deepseek.com/']) assert.equal(chatDestination(url), null);
@@ -86,6 +87,106 @@ test('a destroyed guest cannot leak an unhandled scan rejection',async()=>{
   f.element.dispatchEvent(new Event('dom-ready'));await new Promise(resolve=>setImmediate(resolve));
   f.element.getURL=()=>{throw new Error('destroyed');};
   await assert.doesNotReject(f.guest.scan());
+  await f.guest.dispose();
+});
+
+function sharePageFixture(buttons = []) {
+  const location = { origin:'https://chat.deepseek.com', pathname:'/a/chat/s/test' };
+  const document = {
+    getElementById: () => ({}),
+    querySelectorAll: selector => {
+      if (selector === 'button,[role="button"]' || selector === 'button,[role=button]') return buttons;
+      if (selector === 'button[data-dhp-site-share],[role="button"][data-dhp-site-share]') return buttons.filter(button => Object.hasOwn(button.dataset,'dhpSiteShare'));
+      return [];
+    },
+  };
+  return { location, document, buttons, run: script => new Function('document','location','innerWidth','innerHeight',`return ${script}`)(document,location,1200,800) };
+}
+function shareControl({label='Share',top=30,dialog=false,marked=false}={}) {
+  let clicks=0;
+  return {
+    disabled:false, textContent:label, dataset:marked?{dhpSiteShare:''}:{}, parentElement:null,
+    get clicks(){return clicks;},
+    getAttribute:name=>name==='aria-label'?label:null,
+    closest:()=>dialog?{}:null,
+    getBoundingClientRect(){return Object.hasOwn(this.dataset,'dhpSiteShare')?{width:0,height:0,left:0,top:0,right:0}:{width:30,height:30,left:1140,top,right:1170};},
+    querySelector:()=>({}), click:()=>clicks++,
+  };
+}
+
+test('chat chrome scripts are self-contained and the official header share action is callable',()=>{
+  assert.doesNotThrow(() => new Function(`return ${COMPACT_CHROME_SCRIPT}`));
+  assert.doesNotThrow(() => new Function(`return ${SHARE_CONVERSATION_SCRIPT}`));
+  assert.match(COMPACT_CHROME_SCRIPT,/data-dhp-session-heading/);
+  assert.match(COMPACT_CHROME_SCRIPT,/data-dhp-site-share/);
+  const button=shareControl(), page=sharePageFixture([button]);
+  assert.deepEqual(page.run(SHARE_CONVERSATION_SCRIPT),{ok:true});assert.equal(button.clicks,1);
+  page.location.origin='https://example.com';
+  assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);assert.equal(button.clicks,1);
+});
+
+test('repeated chrome scans keep the hidden header share entry and leave the share dialog untouched',()=>{
+  const button=shareControl(), page=sharePageFixture([button]);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(Object.hasOwn(button.dataset,'dhpSiteShare'),true);
+  assert.equal(button.getBoundingClientRect().width,0);
+  // Place the dialog action in the same top-right area: semantics must exclude it even if its geometry matches.
+  const modalShare=shareControl({dialog:true});page.buttons.unshift(modalShare);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(Object.hasOwn(modalShare.dataset,'dhpSiteShare'),false);
+  assert.deepEqual(page.run(SHARE_CONVERSATION_SCRIPT),{ok:true});
+  assert.equal(button.clicks,1);assert.equal(modalShare.clicks,0);
+  button.disabled=true;
+  assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);assert.equal(button.clicks,1);
+});
+
+test('repeated chrome scans hide only the header title when a message has the same text',()=>{
+  const button=shareControl(), page=sharePageFixture([button]);
+  const header={dataset:{},parentElement:null,getBoundingClientRect:()=>({left:0,top:0,width:1200,height:64})};
+  button.parentElement=header;
+  const title={
+    dataset:{},textContent:'A shared title',tagName:'H1',getAttribute:()=>null,
+    closest:selector=>selector.startsWith('header,')?header:null,
+    getBoundingClientRect(){return Object.hasOwn(this.dataset,'dhpSessionHeading')?{width:0,height:0,left:0,top:0}:{left:500,top:25,width:180,height:24};},
+  };
+  const message={
+    dataset:{},textContent:title.textContent,tagName:'P',getAttribute:()=>null,
+    closest:selector=>selector.includes('article')?{}:null,
+    getBoundingClientRect:()=>({left:500,top:30,width:180,height:24}),
+  };
+  const anchor={href:'https://chat.deepseek.com/a/chat/s/test',getAttribute:()=>title.textContent};
+  const query=page.document.querySelectorAll;
+  page.document.querySelectorAll=selector=>selector==='a[href]'?[anchor]:
+    selector==='[data-dhp-session-heading]'?[title,message].filter(node=>Object.hasOwn(node.dataset,'dhpSessionHeading')):
+    selector==='h1,h2,h3,[role="heading"],div,span,p'?[title,message]:query(selector);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(Object.hasOwn(header.dataset,'dhpSessionHeader'),true);
+  assert.equal(title.dataset.dhpSessionHeading,page.location.pathname);
+  assert.equal(title.getBoundingClientRect().width,0);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  assert.equal(Object.hasOwn(message.dataset,'dhpSessionHeading'),false);
+});
+
+test('missing share entry fails without clicking an unrelated icon, dialog action, or message action',()=>{
+  const close=shareControl({label:'Close'}), modalShare=shareControl({dialog:true}), messageShare=shareControl({top:250});
+  const page=sharePageFixture([close,modalShare,messageShare]);
+  const result=page.run(SHARE_CONVERSATION_SCRIPT);
+  assert.equal(result.ok,false);assert.match(result.error,/暂时找不到官网分享按钮/);
+  assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+  for(const control of page.buttons){assert.equal(control.clicks,0);assert.equal(Object.hasOwn(control.dataset,'dhpSiteShare'),false);}
+  const home=sharePageFixture([shareControl()]);home.location.pathname='/';
+  assert.equal(home.run(SHARE_CONVERSATION_SCRIPT).ok,false);assert.equal(home.buttons[0].clicks,0);
+});
+
+test('guest share action invokes the official website control only after it is ready',async()=>{
+  const f=fixture();await f.guest.start();
+  await assert.rejects(f.guest.share(),/等待 DeepSeek 网页加载完成/);
+  f.element.dispatchEvent(new Event('dom-ready'));await new Promise(resolve=>setImmediate(resolve));
+  const execute=f.element.executeJavaScript.bind(f.element);let invoked=false;
+  f.element.executeJavaScript=code=>code===SHARE_CONVERSATION_SCRIPT?(invoked=true,Promise.resolve({ok:true})):execute(code);
+  assert.deepEqual(await f.guest.share(),{ok:true});assert.equal(invoked,true);
   await f.guest.dispose();
 });
 

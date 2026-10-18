@@ -4,10 +4,11 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { createHash } from 'node:crypto';
 import sharp from 'sharp';
-import { zipSync, strToU8 } from 'fflate';
-import { validateAtlas, STATES, gazeFrame } from '../src/atlas.mjs';
-import { PetStore } from '../src/store.mjs';
+import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
+import { validateAtlas, MAX_BYTES, STATES, gazeFrame } from '../src/atlas.mjs';
+import { ASSET_ROOT, PetStore } from '../src/store.mjs';
 import { createHandler, API_PREFIX } from '../src/http.mjs';
 import { apply } from '../src/index.mjs';
 import { performAction } from '../src/actions.mjs';
@@ -36,6 +37,33 @@ test('clockwise gaze maps exact viewer cardinals and row boundary', () => {
   assert.deepEqual(gazeFrame(0, -10), { direction: 0, row: 9, column: 0 });
   assert.equal(gazeFrame(10, 0).direction, 4); assert.equal(gazeFrame(0, 10).direction, 8); assert.equal(gazeFrame(-10, 0).direction, 12);
 });
+test('deepseek is the first-install default while existing pet selections remain intact', async t => {
+  const store = new PetStore(await workspace(t));
+  const initial = await store.snapshot();
+  const deepseek = initial.pets.find(pet => pet.id === 'deepseek');
+  assert.equal(initial.preferences.selectedPetId, 'deepseek');
+  assert.equal(initial.pets[0].id, 'deepseek');
+  assert.equal(deepseek.name, 'deepseek');
+  assert.equal(deepseek.builtin, true);
+  const bytes = await fs.readFile(path.join(ASSET_ROOT, 'deepseek', 'spritesheet.png'));
+  const report = await validateAtlas(bytes, 2);
+  assert.equal(report.ok, true, report.errors.join('; '));
+  assert.equal(deepseek.sha256, report.sha256);
+  assert.deepEqual(deepseek.artwork.frameCounts, [6, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8]);
+  assert.equal(deepseek.renderScale, 2);
+  const hd = (await store.sprite('deepseek')).bytes;
+  const hdInfo = await sharp(hd).metadata();
+  assert.equal(hdInfo.width, 3072); assert.equal(hdInfo.height, 4576); assert.equal(hdInfo.hasAlpha, true);
+  assert.ok(hd.length <= MAX_BYTES, 'HD PNG must fit the desktop delivery budget');
+  assert.equal(createHash('sha256').update(hd).digest('hex'), deepseek.renderSha256);
+  assert.deepEqual(await sharp(hd).resize(1536, 2288).raw().toBuffer(), await sharp(bytes).raw().toBuffer(), 'standard export and HD display must have identical poses and cell positions');
+  for (const cell of report.cells.filter(cell => cell.required)) {
+    assert.ok(cell.bounds.minX >= 12 && cell.bounds.minY >= 12 && cell.bounds.maxX <= 179 && cell.bounds.maxY <= 195, `frame ${cell.row}:${cell.col} needs transparent safety margins`);
+  }
+
+  await store.select('whale-girl');
+  assert.equal((await store.snapshot()).preferences.selectedPetId, 'whale-girl');
+});
 test('lossless WebP is decoded and validated with the same occupied-cell contract', async () => {
   const input = goodAtlas ?? await atlas();
   const webp = await sharp(input).webp({ lossless: true }).toBuffer();
@@ -58,6 +86,36 @@ test('import/select/edit/export/reimport/delete persist without changing builtin
   await store.delete(pet.id); assert.equal((await store.snapshot()).preferences.selectedPetId, 'whale-girl');
   await assert.rejects(store.get('../state'), /ID/);
 });
+test('HD presentation serves the render atlas and digest while export remains a standard Codex atlas',async t=>{
+  const directory=await workspace(t), assets=path.join(directory,'assets'), petDirectory=path.join(assets,'deepseek');
+  await fs.mkdir(petDirectory,{recursive:true});
+  const standard=goodAtlas??await atlas(), hd=await sharp(standard).resize(3072,4576).png().toBuffer();
+  const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+  const manifest={id:'deepseek',name:'deepseek',spriteVersion:2,spritesheet:'spritesheet.png',sha256:hash(standard),renderSpritesheet:'spritesheet-2x.png',renderSha256:hash(hd),renderScale:2};
+  await fs.writeFile(path.join(petDirectory,'pet.json'),JSON.stringify(manifest));
+  await fs.writeFile(path.join(petDirectory,manifest.spritesheet),standard);
+  await fs.writeFile(path.join(petDirectory,manifest.renderSpritesheet),hd);
+  const store=new PetStore(path.join(directory,'data'),assets);
+  assert.deepEqual((await store.sprite('deepseek')).bytes,hd);
+  assert.equal((await store.sprite('deepseek')).type,'image/png');
+  assert.equal((await store.snapshot()).pets[0].spritesheetUrl,`dsh-hide-pet/sprites/deepseek?v=${manifest.renderSha256}`);
+  const server=http.createServer(createHandler(store));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const response=await fetch(`http://127.0.0.1:${server.address().port}/dsh-hide-pet/sprites/deepseek?v=${manifest.renderSha256}`);
+  assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),hd);
+  const exported=unzipSync(await store.export('deepseek')), saved=JSON.parse(strFromU8(exported['pet.json']));
+  assert.deepEqual(Object.keys(exported).sort(),['pet.json','spritesheet.png']);
+  assert.deepEqual(Buffer.from(exported['spritesheet.png']),standard);
+  assert.equal(saved.sha256,manifest.sha256);assert.equal(saved.spritesheetPath,'spritesheet.png');
+  for(const key of ['renderSpritesheet','renderSha256','renderScale'])assert.equal(Object.hasOwn(saved,key),false);
+  const reimported=await store.importArchive(await store.export('deepseek'));
+  assert.deepEqual((await store.sprite(reimported.pet.id)).bytes,standard);
+  // Display metadata cannot escape the pet directory; standard exports remain available independently.
+  await fs.writeFile(path.join(petDirectory,'pet.json'),JSON.stringify({...manifest,renderSpritesheet:'../outside.png'}));
+  await assert.rejects(store.sprite('deepseek'),/图集路径/);
+  assert.deepEqual(Buffer.from(unzipSync(await store.export('deepseek'))['spritesheet.png']),standard);
+});
+
 test('concurrent stores retain both preference patches; invalid preferences leave state untouched', async t => {
   const dir = await workspace(t), a = new PetStore(dir), b = new PetStore(dir);
   await Promise.all([a.preferences({ visible: false }), b.preferences({ scale: 1.1 })]);

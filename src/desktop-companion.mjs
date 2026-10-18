@@ -60,7 +60,7 @@ export class DesktopCompanion {
       const state = await this.store.snapshot(); this.preferences = state.preferences;
       const pet = state.pets.find(item => item.id === state.preferences.selectedPetId) || state.pets[0];
       if (!pet) return;
-      const key = `${pet.id}:${pet.sha256 || pet.spritesheet}`;
+      const key = `${pet.id}:${pet.renderSha256 || pet.sha256 || pet.spritesheet}`;
       this.imageVersion = Number(pet.spriteVersion) === 1 ? 1 : 2;
       if (this.imageKey !== key) {
         const image = await this.store.sprite(pet.id);

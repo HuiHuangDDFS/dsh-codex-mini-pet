@@ -1,5 +1,6 @@
 <div align="center">
 
+<img src="assets/pets/deepseek/preview.png" alt="deepseek 默认伙伴" width="120">
 <img src="assets/pets/whale-girl/preview.png" alt="深蓝鲸娘" width="120">
 <img src="assets/pets/zhiyu/preview.png" alt="智域" width="120">
 
@@ -11,13 +12,13 @@
 [![下载](https://img.shields.io/github/downloads/HuiHuangDDFS/dsh-codex-mini-pet/total?label=downloads&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)
 [![代码许可](https://img.shields.io/badge/code-MIT-263146?style=flat-square)](LICENSE)
 [![验证](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml)
-![适配版本](https://img.shields.io/badge/dsh-0.2.0--rc.2-2f6f4f?style=flat-square)
+![适配版本](https://img.shields.io/badge/dsh-0.2.1--rc.2-2f6f4f?style=flat-square)
 ![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
 
 > **2.0：把聊天和工作放在同一个窗口，各有自己的会话。**
 >
 > 聊天连接 DeepSeek 官方网页，工作保留 Harness 的项目、模型与工具。
-> 鲸鱼娘和智域陪在桌面上：随手回复、查看动态，任务完成时冒个气泡提醒。
+> deepseek、深蓝鲸娘和智域陪在桌面上：随手回复、查看动态，任务完成时冒个气泡提醒。
 
 *Chat, work, and animated companions — together in DeepSeek Harness.*
 
@@ -36,7 +37,7 @@
 - **中文默认，也可用英语**——在「外观与行为 → 语言」中切换，设置页与桌面聊天即时更新，草稿和会话选择保留。
 
 - **Harness 在后台，伙伴也在桌面上**——Windows 桌面版使用独立透明置顶窗口，主窗口最小化后仍可见；完全退出 Harness 时一起关闭。
-- **两个初始伙伴**——内置蓝白鲸鱼主题 Q 版「深蓝鲸娘」和白发黑衣「智域」，在设置中直接切换。
+- **三个内置伙伴**——新增基于设定图生成的蓝发鲸鱼女仆风 Q 版 `deepseek`，使用重绘后的 2 倍高清图集，保留「深蓝鲸娘」和「智域」。新安装默认选择 `deepseek`，升级保留已有选择。
 - **会跑、会打招呼，也会看向鼠标**——支持九类动作与十六方向注视；左右拖动时播放对应方向的跑步动画，松开后恢复任务状态。
 - **靠近时展开**——鼠标接近伙伴后柔和显示「聊一聊」和「动态」，离开后延迟收起；打开面板时保留操作栏，精简模式始终保留入口。
 - **从伙伴旁开始聊天**——选择工作区、新建会话或继续未归档会话，普通消息在后台提交；“在主会话编辑”才唤起 Harness 并聚焦输入栏。Windows 桌面模式支持全局 **Ctrl+Alt+Shift+P**。
@@ -50,7 +51,7 @@
 
 ### 聊天与工作
 
-在主界面顶部选择「聊天」或「工作」。网页内重复的左上角导航隐藏，使用 Harness 左侧聊天列表进行操作。
+在主界面顶部选择「聊天」或「工作」。聊天会话名称显示在页眉左上角，分享入口位于页眉工具区；网页内重复的导航、会话标题和分享按钮隐藏，使用 Harness 左侧聊天列表进行操作。点击分享会打开官网分享弹窗，后续操作仍由你在官网界面确认。
 
 <img src="docs/images/chat-mode.png" alt="2.0 聊天模式：顶部模式切换，左侧工作区与可收起的聊天栏，右侧为 DeepSeek 官方聊天首页" width="100%">
 
@@ -101,11 +102,11 @@
 
 ## 安装
 
-当前版本为 **2.0.1**，适配 DeepSeek Harness **0.2.0-rc.2**。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
+当前版本为 **2.0.2**，已在 DeepSeek Harness **0.2.1-rc.2** 上验证可用。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.1.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.1/dsh-codex-mini-pet-2.0.1.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.2.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.2/dsh-codex-mini-pet-2.0.2.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
@@ -117,7 +118,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-codex-mini-pet-2.0.1.tgz`。固定版本源码可从 [v2.0.1 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.1) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-codex-mini-pet-2.0.2.tgz`。固定版本源码可从 [v2.0.2 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.2) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -129,7 +130,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.1.tgz).Path
+$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.2.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -138,7 +139,7 @@ $petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.1.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.1.tgz
+dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.2.tgz
 ```
 
 将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。
@@ -162,7 +163,9 @@ dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.1.tgz
 
 ### 选择与调整伙伴
 
-进入「设置 → codex-mini-pet」选择鲸鱼娘或智域。在「外观与行为」中调整大小、目光跟随和减少动态效果；关闭「桌面置顶」即可切回应用内显示。
+进入「设置 → codex-mini-pet」选择 `deepseek`、深蓝鲸娘或智域。在「外观与行为」中调整大小、目光跟随和减少动态效果；关闭「桌面置顶」即可切回应用内显示。
+
+`deepseek` 在界面与桌面上使用高清素材，图集逐帧保留完整发尖、尾巴、双脚和透明留白。导出 ZIP 时使用标准 v2 图集，保持 Codex 宠物包兼容性。
 
 **精简模式**收起角色形象、保留聊天和动态；**隐藏伙伴**收起整个窗口。可在设置中再次显示，或输入 `/pet show`。
 
@@ -193,6 +196,7 @@ dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.1.tgz
 | `/pet show` / `/pet hide` | 显示 / 隐藏伙伴 |
 | `/pet mini` | 切换为精简模式 |
 | `/pet list` | 列出宠物 |
+| `/pet select deepseek` | 选择新默认伙伴 deepseek |
 | `/pet select zhiyu` | 选择智域 |
 | `/pet select whale-girl` | 选择深蓝鲸娘 |
 | `/pet reset position` | 重置位置 |
@@ -274,7 +278,7 @@ npm run test:native
 
 该检查会短暂显示测试宠物并移动鼠标，验证跨区点击、按钮文字、聊天输入焦点、动态跳转、左右拖动动画、显示模式切换及进程退出。
 
-当前版本包含 **63 项自动测试**，覆盖会话路由、切换竞态、列表保持、官网操作适配及原有宠物功能；Windows 宿主已实测双模式切换、草稿保留和官网重命名。CI 在 Windows/Linux 上执行语法检查、测试、构建和打包验证，结果见页面顶部状态徽章。适配基线、验证边界与更新记录见 [功能对齐说明](docs/feature-parity.md) 和 [CHANGELOG](CHANGELOG.md)。其他 Harness 版本需按实际接口验证。
+自动测试覆盖会话路由、切换竞态、列表保持、官网分享与会话管理适配、新默认宠物和原有宠物功能；Windows 宿主已实测双模式切换、草稿保留和官网重命名，并确认新伙伴在设置页正常显示。CI 在 Windows/Linux 上执行语法检查、测试、构建和打包验证，结果见页面顶部状态徽章。适配基线、验证边界与更新记录见 [功能对齐说明](docs/feature-parity.md) 和 [CHANGELOG](CHANGELOG.md)。其他 Harness 版本需按实际接口验证。
 
 ## 许可证与致谢
 

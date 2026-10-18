@@ -606,14 +606,21 @@ namespace DshPet {
       var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight), 96, 96, PixelFormats.Pbgra32); bitmap.Render(element);
       var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using (var output = File.Create(path)) encoder.Save(output);
     }
+    public static BitmapSource[] CreateAtlasFrames(BitmapSource image) {
+      int pixelScale = image.PixelWidth / (192 * 8);
+      if ((pixelScale != 1 && pixelScale != 2) || image.PixelWidth != 192 * 8 * pixelScale || (image.PixelHeight != 208 * 9 * pixelScale && image.PixelHeight != 208 * 11 * pixelScale)) throw new ArgumentException("Atlas must be a complete 1x or 2x v1/v2 sprite sheet.");
+      int cellWidth = 192 * pixelScale, cellHeight = 208 * pixelScale, rows = image.PixelHeight / cellHeight;
+      var result = new BitmapSource[rows * 8];
+      for (int r = 0; r < rows; r++) for (int c = 0; c < 8; c++) { var crop = new CroppedBitmap(image, new Int32Rect(c * cellWidth, r * cellHeight, cellWidth, cellHeight)); crop.Freeze(); result[r * 8 + c] = crop; }
+      return result;
+    }
     public void Accept(Dictionary<string, object> message) {
       string type = Str(message, "type");
       if (type == "toggle-chat") { if (!IsVisible) Show(); ToggleChat(); return; }
       if (type == "atlas") {
         var bytes = Convert.FromBase64String(Str(message, "base64")); var image = new BitmapImage();
         using (var stream = new MemoryStream(bytes)) { image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.StreamSource = stream; image.EndInit(); image.Freeze(); }
-        frames = new BitmapSource[(image.PixelHeight / 208) * 8];
-        for (int r = 0; r < image.PixelHeight / 208; r++) for (int c = 0; c < 8; c++) { var crop = new CroppedBitmap(image, new Int32Rect(c * 192, r * 208, 192, 208)); crop.Freeze(); frames[r * 8 + c] = crop; }
+        frames = CreateAtlasFrames(image);
         Draw(); return;
       }
       if (type == "frame") { row = (int)Num(message, "row", 0); column = (int)Num(message, "column", 0); Draw(); return; }

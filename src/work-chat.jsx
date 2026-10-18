@@ -11,7 +11,7 @@ export const workChatCss = `
 .dhp-wc-chat-item{position:relative;display:flex;align-items:center;border-radius:9px}.dhp-wc-chat-item:hover,.dhp-wc-chat-item[data-current=true]{background:var(--dsw-alias-interactive-bg-hover,#eee)}.dhp-wc-chat-item .dhp-wc-chat-row{min-width:0;flex:1;padding-right:30px;background:transparent}.dhp-wc-chat-row svg{flex:none}.dhp-wc-row-more{position:absolute;right:4px;width:26px;height:26px;display:grid;place-items:center;border:0;background:transparent;border-radius:7px;font-size:18px!important;opacity:0}.dhp-wc-chat-item:hover .dhp-wc-row-more,.dhp-wc-row-more:focus-visible,.dhp-wc-chat-item[data-current=true] .dhp-wc-row-more{opacity:1}.dhp-wc-row-more:hover{background:var(--dsw-alias-interactive-bg-hover,#e6e6e7)}.dhp-wc-session-menu{position:fixed;z-index:1400;background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l3,#ddd);border-radius:12px;padding:5px;box-shadow:0 10px 40px #0002;min-width:150px}.dhp-wc-session-menu button{display:block;width:100%;padding:9px 12px;border:0;background:transparent;border-radius:8px;text-align:left;font-size:13px}.dhp-wc-session-menu button:hover{background:var(--dsw-alias-interactive-bg-hover,#eee)}.dhp-wc-danger{color:var(--dsw-alias-state-error-primary,#ca515b)!important}.dhp-wc-dialog-mask{position:fixed;inset:0;z-index:1400;background:#0005;display:grid;place-items:center;padding:20px}.dhp-wc-rename{background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l3,#ddd);border-radius:18px;padding:24px;width:380px;max-width:100%;box-shadow:0 18px 70px #0002}.dhp-wc-rename h2{font-size:18px;margin:0 0 18px;font-weight:500}.dhp-wc-rename input,.dhp-wc-search{font:inherit;background:transparent;border:1px solid var(--dsw-alias-border-l3,#ddd);border-radius:10px;padding:10px 12px;width:100%;color:inherit;outline:none}.dhp-wc-rename input:focus,.dhp-wc-search:focus{border-color:var(--dsw-alias-state-business-primary,#5178ef)}.dhp-wc-rename>div{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.dhp-wc-rename>p{font-size:12px;color:var(--dsw-alias-state-error-primary,#ca515b);line-height:1.6}.dhp-wc-search{font-size:12px;padding:7px 9px;margin:0 6px 8px;width:calc(100% - 12px)}
 .dhp-wc-loading{display:flex;justify-content:center;align-items:center;gap:8px;height:100%;font-size:13px;color:var(--dsw-alias-label-secondary,#666)}.dhp-wc-loading:before{content:'';width:14px;height:14px;border:2px solid #8097d444;border-top-color:#6585ee;border-radius:50%;animation:dhp-wc-spin .8s linear infinite}@keyframes dhp-wc-spin{to{transform:rotate(360deg)}}[data-sidebar-collapsed=true] .dhp-wc-history{display:none}@media(prefers-reduced-motion:reduce){.dhp-wc *{animation:none!important;transition:none!important}}@media(max-width:850px){.dhp-wc-panel-header .dhp-wc-domain{display:none}.dhp-wc-panel-header{justify-content:flex-start;padding-left:14px}.dhp-wc-modes{width:220px}}`;
 
-const workChatModeCss = `.dhp-wc-work-switch .dhp-wc-modes{width:252px}.dhp-wc-work-switch .dhp-wc-modes button{padding:10px 20px}@media(max-width:850px){.dhp-wc-modes,.dhp-wc-work-switch .dhp-wc-modes{width:220px}}`;
+const workChatHeaderCss = `.dhp-wc-work-switch .dhp-wc-modes{width:252px}.dhp-wc-work-switch .dhp-wc-modes button{padding:10px 20px}.dhp-wc-session-title{position:absolute;left:20px;max-width:max(0px,calc(50% - 150px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:500;line-height:20px;color:var(--dsw-alias-label-primary,#202123)}@media(max-width:850px){.dhp-wc-modes,.dhp-wc-work-switch .dhp-wc-modes{width:220px}.dhp-wc-panel-header{justify-content:center}}`;
 
 function useSource(source) {
   const bound = useMemo(() => bindExternalSource(source), [source]);
@@ -24,6 +24,7 @@ export function ModeSwitch({ mode, controller, t }) {
   }}><button role="tab" aria-selected={mode === 'chat'} onClick={() => controller.open()}>{t('聊天')}</button><button role="tab" aria-selected={mode === 'work'} onClick={() => controller.work()}>{t('工作')}</button></div>;
 }
 function ChatBubbleIcon() { return <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M4 3.5h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9L4 17v-2.5H3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1Z" /></svg>; }
+function ShareIcon() { return <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 3h6v6M17 3l-8 8"/><path d="M15 11v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>; }
 export function ChatHistory({ controller, active, t }) {
   const state = useSource(controller);
   const selected = chatSession(state.url)?.id;
@@ -52,8 +53,10 @@ function ChatPanel({ controller, language, onViewport }) {
   const state = useSource(controller);
   useEffect(() => { if (!state.opened) controller.open(); }, [state.opened, controller]);
   const t = createTranslator(language);
+  const activeSession = chatSession(state.url);
+  const sessionTitle = activeSession ? (state.rows.find(row => row.id === activeSession.id)?.title || state.title) : '';
   return <section className="dhp-wc dhp-wc-panel" aria-label={t('DeepSeek 聊天模式')}>
-    <header className="dhp-wc-panel-header"><ModeSwitch mode="chat" controller={controller} t={t} /><div className="dhp-wc-tools"><button className="dhp-wc-icon" aria-label={t('新聊天')} title={t('新聊天')} onClick={() => controller.open(DEEPSEEK_HOME)}>＋</button><button className="dhp-wc-icon" aria-label={t('刷新网页')} title={t('刷新网页')} onClick={() => controller.reload?.()}>↻</button></div></header>
+    <header className="dhp-wc-panel-header">{sessionTitle&&<span className="dhp-wc-session-title" title={sessionTitle}>{sessionTitle}</span>}<ModeSwitch mode="chat" controller={controller} t={t} /><div className="dhp-wc-tools"><button className="dhp-wc-icon" aria-label={t('分享聊天')} title={t('分享聊天')} disabled={!activeSession||state.status!=='ready'} onClick={() => controller.share?.().catch(error => controller.report({error:error.message}))}><ShareIcon/></button><button className="dhp-wc-icon" aria-label={t('新聊天')} title={t('新聊天')} onClick={() => controller.open(DEEPSEEK_HOME)}>＋</button><button className="dhp-wc-icon" aria-label={t('刷新网页')} title={t('刷新网页')} onClick={() => controller.reload?.()}>↻</button></div></header>
     <div className="dhp-wc-viewport" ref={onViewport}><div className="dhp-wc-loading" aria-hidden="true">{state.status === 'loading' ? t('正在打开 DeepSeek 官方网页…') : ''}</div></div>
   </section>;
 }
@@ -147,8 +150,8 @@ function WorkChatExtension({ ctx, controller, viewport, useLanguage, activePanel
   useEffect(() => {
     if (!state.opened || !host.current) return;
     const browser = createDeepSeekGuest({ bridge: window.dshDesktop?.browser, host:host.current, report:controller.report, observe:controller.observe });
-    guest.current = browser; controller.scan = () => browser.scan(); controller.reload = () => browser.reload(); controller.manageRow = async (row,action,title) => { ctx.layout.selectPanel(CHAT_PANEL); return browser.manage(row,action,title); }; browser.start();
-    return () => { guest.current = null; delete controller.scan; delete controller.reload; delete controller.manageRow; browser.dispose(); };
+    guest.current = browser; controller.scan = () => browser.scan(); controller.reload = () => browser.reload(); controller.share = () => browser.share(); controller.manageRow = async (row,action,title) => { ctx.layout.selectPanel(CHAT_PANEL); return browser.manage(row,action,title); }; browser.start();
+    return () => { guest.current = null; delete controller.scan; delete controller.reload; delete controller.share; delete controller.manageRow; browser.dispose(); };
   }, [state.opened, controller]);
   useEffect(() => { if (state.request) guest.current?.navigate(state.request.url); }, [state.request]);
   useEffect(() => { if (!active) return; const timer = setInterval(() => guest.current?.scan(), 3000); return () => clearInterval(timer); }, [active]);
@@ -164,7 +167,7 @@ function WorkChatExtension({ ctx, controller, viewport, useLanguage, activePanel
     document.addEventListener('click', intercept, true); return () => document.removeEventListener('click', intercept, true);
   }, [active, controller]);
   return <>
-    <style>{workChatCss + workChatModeCss}</style>
+    <style>{workChatCss + workChatHeaderCss}</style>
     {sidebar && createPortal(<ChatHistory controller={controller} active={active} t={t} />, sidebar)}
     {workActive && workRect && <div className="dhp-wc dhp-wc-work-switch" style={{left:workRect.x+workRect.width/2,top:workRect.y+(workBlank ? 12 : 4)}}><ModeSwitch mode="work" controller={controller} t={t} /></div>}
     {state.opened && <section className="dhp-wc dhp-wc-browser" ref={browserFrame} aria-label={t('DeepSeek 官方网页')}>
