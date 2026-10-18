@@ -6,7 +6,7 @@
 
 # dsh-codex-mini-pet
 
-**一个 Harness，聊天、工作与桌面伙伴。**
+**把 Codex 中熟悉、连贯的工作习惯带到 DeepSeek Harness。**
 
 [![版本](https://img.shields.io/github/v/tag/HuiHuangDDFS/dsh-codex-mini-pet?label=version&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tags)
 [![下载](https://img.shields.io/github/downloads/HuiHuangDDFS/dsh-codex-mini-pet/total?label=downloads&style=flat-square)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)
@@ -15,12 +15,12 @@
 ![适配版本](https://img.shields.io/badge/dsh-0.2.1--rc.2-2f6f4f?style=flat-square)
 ![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
 
-> **2.0：把聊天和工作放在同一个窗口，各有自己的会话。**
+> **v2.0.2：聊天、项目工作与桌面伙伴，在一个 Harness 里自然衔接。**
 >
-> 聊天连接 DeepSeek 官方网页，工作保留 Harness 的项目、模型与工具。
-> deepseek、深蓝鲸娘和智域陪在桌面上：随手回复、查看动态，任务完成时冒个气泡提醒。
+> 聊天连接 DeepSeek 官方网页，工作继续使用 Harness 原生的工作区、会话、模型与工具。
+> 新增高清默认伙伴 `deepseek`，修复动画边缘截断；桌面上可快捷聊天、查看动态，并接收任务完成提醒。
 
-*Chat, work, and animated companions — together in DeepSeek Harness.*
+*Bring familiar Codex workflows to DeepSeek Harness — with chat, project work, and animated companions.*
 
 [下载最新版](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) · [功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
 
@@ -53,9 +53,9 @@
 
 在主界面顶部选择「聊天」或「工作」。聊天会话名称显示在页眉左上角，分享入口位于页眉工具区；网页内重复的导航、会话标题和分享按钮隐藏，使用 Harness 左侧聊天列表进行操作。点击分享会打开官网分享弹窗，后续操作仍由你在官网界面确认。
 
-<img src="docs/images/chat-mode.png" alt="2.0 聊天模式：顶部模式切换，左侧工作区与可收起的聊天栏，右侧为 DeepSeek 官方聊天首页" width="100%">
+<img src="docs/images/chat-mode.png" alt="聊天模式：在 Harness 内使用 DeepSeek 官方聊天首页，顶部可切换工作模式" width="100%">
 
-<img src="docs/images/work-mode.png" alt="2.0 工作模式：保留 Harness 原生的新会话、工作区和模型输入栏" width="100%">
+<img src="docs/images/work-mode.png" alt="工作模式：Harness 原生新会话、工作区选择、模型输入栏与高清默认伙伴" width="100%">
 
 | 入口 | 适合做什么 | 会话与服务 |
 | --- | --- | --- |
@@ -79,19 +79,18 @@
 ### 桌面上的伙伴
 
 <div align="center">
-  <img src="docs/images/desktop-pet.png" alt="深蓝鲸娘及聊天、动态操作栏" width="220">
+  <img src="docs/images/desktop-pet.png" alt="DeepSeek Harness 桌面模式中的高清默认伙伴 deepseek" width="220">
 </div>
 
-拖动形象调整位置，点击形象打招呼；鼠标靠近后，底栏出现“聊一聊”和“动态”，再次点击同一入口即可收起。右键可打开伙伴设置、隐藏伙伴或切回应用内显示。上图展示内置形象，入口的最新行为见下方说明。
+拖动形象调整位置，点击形象打招呼；鼠标靠近后，底栏出现“聊一聊”和“动态”，再次点击同一入口即可收起。右键可打开伙伴设置、隐藏伙伴或切回应用内显示。截图展示 2.0.2 默认伙伴 `deepseek` 在桌面上的实际效果。
 
 ### Harness 原生设置
 
 桌面版：**左下角「更多」→ 设置 → codex-mini-pet**。Web 版直接进入「设置 → codex-mini-pet」。
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
-  <img src="docs/images/settings-light.png" alt="Harness 原生宠物伙伴设置页，展示鲸鱼娘与智域" width="100%">
-</picture>
+<img src="docs/images/settings-pets.png" alt="Harness 原生宠物伙伴设置页，展示角色预览、外观与行为、动作和导入选项" width="100%">
+
+新安装默认选中 `deepseek`；设置页可预览和切换内置伙伴，调整桌面行为，并导入自定义图集。
 
 | 页面 | 可以做什么 |
 | --- | --- |
