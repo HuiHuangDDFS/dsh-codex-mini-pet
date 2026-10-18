@@ -35,6 +35,10 @@
     "test:native": "node scripts/verify-native-windows.mjs",
     "prepack": "npm run build"
   },
+  "//scripts": {
+    "build-on-install": "There is deliberately NO `prepare` script. pnpm builds a git dependency when it sees `prepare`, and then requires that build to be allowed through `allowBuilds`; `dsh plugin add github:<owner>/<repo>` (what the plugin market runs) does not grant that, so a `prepare` here would make every git install fail with ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED. Without `prepare`, pnpm keeps a build only when the declared entry file is missing (packageShouldBeBuilt), so committing `lib/` makes git installs work as-is. Rebuild and commit `lib/` before tagging a release — CI's `npm pack --dry-run` does not check that the committed build matches `src/`, so the release check below does.",
+    "release-check": "node scripts/verify-committed-lib.mjs"
+  },
   "engines": {
     "node": ">=22.19.0"
   },

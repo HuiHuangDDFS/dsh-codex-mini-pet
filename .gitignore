@@ -1,6 +1,17 @@
 node_modules/
-lib/
 *.tgz
 work/
 .preview-data/
 coverage/
+
+# `lib/` is committed on purpose: pnpm only builds a git dependency when its
+# declared entry file is missing, and the plugin market's
+# `dsh plugin add github:<owner>/<repo>` cannot approve a build script — so
+# shipping the build is what makes that install path work. See the note in
+# package.json's `scripts`.
+#
+# Only the two files a git install actually loads are committed. The rest is
+# build output rebuilt by `npm run build` (and by `prepack` when publishing).
+lib/*
+!lib/index.js
+!lib/client.js
