@@ -15,10 +15,10 @@
 ![适配版本](https://img.shields.io/badge/dsh-0.2.1--rc.2-2f6f4f?style=flat-square)
 ![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
 
-> **v2.0.3：聊天、项目工作与桌面伙伴，在一个 Harness 里自然衔接。**
+> **v2.0.4：聊天、项目工作与桌面伙伴，在一个 Harness 里自然衔接。**
 >
 > 聊天连接 DeepSeek 官方网页，工作继续使用 Harness 原生的工作区、会话、模型与工具。
-> 本版修复聊天页重复的会话标题和分享按钮；保留高清默认伙伴 `deepseek`、桌面快捷聊天、任务动态与完成提醒。
+> 本版修复分享入口误识别：无标签按钮校验官网分享图形，找不到时停止操作；保留高清默认伙伴 `deepseek`、桌面快捷聊天、任务动态与完成提醒。
 
 *Bring familiar Codex workflows to DeepSeek Harness — with chat, project work, and animated companions.*
 
@@ -101,11 +101,11 @@
 
 ## 安装
 
-当前版本为 **2.0.3**，已在 DeepSeek Harness **0.2.1-rc.2** 上验证可用。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
+当前版本为 **2.0.4**，已在 DeepSeek Harness **0.2.1-rc.2** 上验证可用。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.3.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.3/dsh-codex-mini-pet-2.0.3.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.4.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.4/dsh-codex-mini-pet-2.0.4.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
@@ -117,7 +117,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-codex-mini-pet-2.0.3.tgz`。固定版本源码可从 [v2.0.3 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.3) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-codex-mini-pet-2.0.4.tgz`。固定版本源码可从 [v2.0.4 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.4) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -129,7 +129,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.3.tgz).Path
+$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.4.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -138,7 +138,7 @@ $petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.3.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.3.tgz
+dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.4.tgz
 ```
 
 将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。

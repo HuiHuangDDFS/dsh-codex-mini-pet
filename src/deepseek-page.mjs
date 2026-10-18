@@ -3,33 +3,51 @@ import { chatSession } from './work-chat-model.mjs';
 /** Identify the conversation header's official action, never a dialog action or an arbitrary icon. */
 function findConversationShareControl() {
   if (!/^\/a\/[a-zA-Z0-9_-]+\/s\/[a-zA-Z0-9_-]+\/?$/.test(location.pathname)) return null;
-  const excluded = '[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,.ds-modal-wrapper,.ds-modal';
+  const excluded = '[role="dialog"],[aria-modal="true"],dialog,[role="menu"],[data-dhp-site-sidebar],aside,nav,article,[role="article"],[data-message-id],[data-testid*="message"],.ds-modal-wrapper,.ds-modal';
   const candidates = [...new Set([
     ...document.querySelectorAll('button,[role="button"]'),
     // DeepSeek's icon controls may be clickable .ds-icon-button divs with no button role.
     ...document.querySelectorAll('.ds-icon-button'),
   ])];
+  const pattern = /\bshare\b|分享/i;
+  const labelOf = element => [...['aria-label','title','data-tooltip-content','data-testid'].map(name => element.getAttribute(name) || ''),element.textContent || ''].join(' ').trim();
+  // Observed desktop/mobile share arrows from DeepSeek's public web bundle. Unknown shapes fail closed.
+  const shareIcons = [{"viewBox":"0 0 16 16","path":"M7.95889 1.52285C7.95888 0.826234 8.76055 0.467983 9.27669 0.875208L9.37524 0.967191L15.1317 7.18358C15.5582 7.64419 15.5582 8.35614 15.1317 8.81676L9.37524 15.0331C8.87034 15.578 7.95888 15.2205 7.95889 14.4775V10.8207C7.10614 10.8432 6.31361 10.9316 5.45468 11.2515C4.39484 11.6463 3.18248 12.413 1.64676 13.9425C1.4533 14.135 1.18329 14.1696 0.969086 14.0908C0.74748 14.0091 0.547307 13.7879 0.54859 13.4844L0.55516 13.1315C0.618924 11.3494 1.11153 9.29838 2.27656 7.63787C3.45289 5.96147 5.29554 4.71635 7.95889 4.54797V1.52285ZM9.20911 5.13366C9.20899 5.50567 8.9031 5.77687 8.56523 5.77755C5.99383 5.78282 4.33736 6.8762 3.29964 8.35496C2.54519 9.43014 2.10739 10.7283 1.9152 11.9939C3.04749 11.0323 4.0569 10.4385 5.01917 10.0801C6.29638 9.60449 7.4406 9.56343 8.56429 9.56295C8.9178 9.5628 9.20894 9.84909 9.20911 10.2068L9.20817 13.3737L14.1837 8.00017L9.20817 2.62571L9.20911 5.13366Z"},{"viewBox":"0 0 20 20","path":"M9.73047 1.98239C9.73046 1.21153 10.6128 0.810523 11.1895 1.25486L11.3008 1.35544L18.3906 8.83005C18.8698 9.33527 18.8696 10.1273 18.3906 10.6328L11.3008 18.1152C10.735 18.7123 9.73046 18.3118 9.73047 17.4892V12.9765C9.05058 12.9603 8.23982 12.9642 7.26075 13.206C5.95079 13.5297 4.32474 14.294 2.49512 16.1133C2.27349 16.3334 1.96525 16.3697 1.72364 16.2793C1.47489 16.1859 1.24879 15.9363 1.25 15.5937L1.25879 15.167C1.33996 13.0226 1.97201 10.7003 3.34278 8.85642C4.71905 7.00534 6.81702 5.67342 9.73047 5.48728V1.98239ZM11.1504 6.15427C11.1502 6.57441 10.8056 6.88304 10.4209 6.88376C7.60432 6.88909 5.7029 8.06242 4.48243 9.70407C3.57516 10.9245 3.03042 12.426 2.79981 13.9394C4.29988 12.7446 5.69229 12.1304 6.91993 11.8271C8.47348 11.4433 9.75076 11.5693 10.4229 11.5713C10.8512 11.5725 11.1504 11.926 11.1504 12.3017V16.209L17.2881 9.73142L11.1504 3.25974V6.15427Z"}];
+  const knownShareIcon = element => {
+    const svg = element.querySelector('svg');
+    if (!svg) return false;
+    const viewBox = (svg.getAttribute('viewBox') || '').trim().replace(/\s+/g,' ');
+    const paths = [...svg.querySelectorAll('path')];
+    if (paths.length !== 1) return false;
+    const path = (paths[0].getAttribute('d') || '').replace(/\s+/g,'');
+    return shareIcons.some(icon => icon.viewBox === viewBox && icon.path.replace(/\s+/g,'') === path);
+  };
+  const hasShareIdentity = element => {
+    const label = labelOf(element);
+    return pattern.test(label) || (!label && knownShareIcon(element));
+  };
+  for (const element of candidates) {
+    if (Object.hasOwn(element.dataset,'dhpSiteShare') && (element.closest(excluded) || !hasShareIdentity(element))) delete element.dataset.dhpSiteShare;
+  }
   const marked = candidates
-    .find(element => Object.hasOwn(element.dataset,'dhpSiteShare') && !element.closest(excluded));
+    .find(element => Object.hasOwn(element.dataset,'dhpSiteShare') && !element.closest(excluded) && hasShareIdentity(element));
   // The stylesheet hides a known header action; retain it across repeated scans and use its original click handler.
   if (marked) return marked;
-  const pattern = /\bshare\b|分享/i;
   const controls = candidates.filter(element => {
     if (element.closest(excluded)) return false;
-    const label = [...['aria-label','title','data-tooltip-content','data-testid'].map(name => element.getAttribute(name) || ''),element.textContent || ''].join(' ');
+    const label = labelOf(element);
     const box = element.getBoundingClientRect();
     return pattern.test(label) && box.width > 0 && box.height > 0 && box.height <= 65 && box.top >= 0 && box.top < 100 && box.right >= innerWidth * .8;
   });
   if (controls.length) return controls[0];
-  // DeepSeek can render the official share icon without an accessible label. On a conversation route,
-  // the unlabeled icon is the small, rightmost SVG control in the page's top bar.
-  return candidates
+  // A top-right position alone cannot distinguish Share from Close, More, or other controls.
+  const unlabeled = candidates
     .filter(element => {
-      if (element.closest(excluded) || !element.querySelector('svg')) return false;
+      if (element.closest(excluded) || labelOf(element) || !knownShareIcon(element)) return false;
       const box = element.getBoundingClientRect();
       return box.width >= 20 && box.width <= 64 && box.height >= 20 && box.height <= 64 && box.top >= 0 && box.top < 85 && box.right >= innerWidth * .92;
-    })
-    .sort((a,b) => b.getBoundingClientRect().right-a.getBoundingClientRect().right)[0] || null;
+    });
+  return unlabeled.length === 1 ? unlabeled[0] : null;
 }
 
 /** Presentation-only integration: remove duplicate website navigation, keep its DOM for official actions. */
@@ -113,7 +131,7 @@ export const COMPACT_CHROME_SCRIPT = `(${compactDeepSeekChrome.toString()})(${fi
 export function shareConversationOnPage(findShareControl = findConversationShareControl) {
   if (location.origin !== 'https://chat.deepseek.com') return {ok:false,error:'请先打开 DeepSeek 官方聊天页面。'};
   const button = findShareControl();
-  if (!button || button.disabled) return {ok:false,error:'暂时找不到官网分享按钮，请确认会话页面已加载。'};
+  if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return {ok:false,error:'暂时找不到官网分享按钮，请确认会话页面已加载。'};
   button.click();
   return {ok:true};
 }

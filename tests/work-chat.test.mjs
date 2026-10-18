@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { CHAT_PANEL, DEEPSEEK_HOME, chatDestination, chatSession, normalizeChatRows, createWorkChatController } from '../src/work-chat-model.mjs';
 import { CHAT_NAVIGATION_SCRIPT, createDeepSeekGuest } from '../src/deepseek-guest.mjs';
 import { COMPACT_CHROME_SCRIPT, SHARE_CONVERSATION_SCRIPT } from '../src/deepseek-page.mjs';
+const shareIconFixtures = JSON.parse(readFileSync(new URL('./fixtures/deepseek-share-icons.json', import.meta.url), 'utf8')).icons;
 
 test('chat navigation admits only the official HTTPS origin and history admits only conversation routes', () => {
   for (const url of [null, undefined, '', 'https://evil.example/a/chat/s/123', '//evil.example/', 'javascript:alert(1)', 'http://chat.deepseek.com/', 'https://user:password@chat.deepseek.com/']) assert.equal(chatDestination(url), null);
@@ -95,22 +97,27 @@ function sharePageFixture(buttons = []) {
   const document = {
     getElementById: () => ({}),
     querySelectorAll: selector => {
-      if (selector === 'button,[role="button"]' || selector === 'button,[role=button]') return buttons;
+      if (selector === 'button,[role="button"]' || selector === 'button,[role=button]') return buttons.filter(button => button.buttonRole);
+      if (selector === '.ds-icon-button') return buttons.filter(button => button.iconControl);
       if (selector === 'button[data-dhp-site-share],[role="button"][data-dhp-site-share]') return buttons.filter(button => Object.hasOwn(button.dataset,'dhpSiteShare'));
       return [];
     },
   };
   return { location, document, buttons, run: script => new Function('document','location','innerWidth','innerHeight',`return ${script}`)(document,location,1200,800) };
 }
-function shareControl({label='Share',top=30,dialog=false,marked=false}={}) {
+function shareControl({label='Share',top=30,dialog=false,message=false,marked=false,icon=null,buttonRole=true,iconControl=false,ariaDisabled=false}={}) {
   let clicks=0;
+  const svg = {
+    getAttribute:name=>name==='viewBox'?(icon?.viewBox || '0 0 16 16'):null,
+    querySelectorAll:selector=>selector==='path'?[{getAttribute:name=>name==='d'?(icon?.path || 'M1 1L15 15M15 1L1 15'):null}]:[],
+  };
   return {
-    disabled:false, textContent:label, dataset:marked?{dhpSiteShare:''}:{}, parentElement:null,
+    buttonRole,iconControl,disabled:false, textContent:label, dataset:marked?{dhpSiteShare:''}:{}, parentElement:null,
     get clicks(){return clicks;},
-    getAttribute:name=>name==='aria-label'?label:null,
-    closest:()=>dialog?{}:null,
+    getAttribute:name=>name==='aria-label'?label:name==='aria-disabled'&&ariaDisabled?'true':null,
+    closest:selector=>(dialog&&selector.includes('[role="dialog"]'))||(message&&selector.includes('article'))?{}:null,
     getBoundingClientRect(){return Object.hasOwn(this.dataset,'dhpSiteShare')?{width:0,height:0,left:0,top:0,right:0}:{width:30,height:30,left:1140,top,right:1170};},
-    querySelector:()=>({}), click:()=>clicks++,
+    querySelector:selector=>selector==='svg'?svg:null, click:()=>clicks++,
   };
 }
 
@@ -178,6 +185,67 @@ test('missing share entry fails without clicking an unrelated icon, dialog actio
   for(const control of page.buttons){assert.equal(control.clicks,0);assert.equal(Object.hasOwn(control.dataset,'dhpSiteShare'),false);}
   const home=sharePageFixture([shareControl()]);home.location.pathname='/';
   assert.equal(home.run(SHARE_CONVERSATION_SCRIPT).ok,false);assert.equal(home.buttons[0].clicks,0);
+});
+
+test('unlabeled official desktop and mobile share SVGs survive repeated scans without a button role',()=>{
+  for (const icon of shareIconFixtures) {
+    const share=shareControl({label:'',icon,buttonRole:false,iconControl:true});
+    const close=shareControl({label:'Close',icon}), unknown=shareControl({label:''});
+    const page=sharePageFixture([close,unknown,share]);
+    assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+    assert.equal(page.run(COMPACT_CHROME_SCRIPT),true);
+    assert.equal(Object.hasOwn(share.dataset,'dhpSiteShare'),true);
+    assert.equal(Object.hasOwn(close.dataset,'dhpSiteShare'),false);
+    assert.equal(Object.hasOwn(unknown.dataset,'dhpSiteShare'),false);
+    assert.deepEqual(page.run(SHARE_CONVERSATION_SCRIPT),{ok:true});
+    assert.equal(share.clicks,1);assert.equal(close.clicks,0);assert.equal(unknown.clicks,0);
+  }
+  const labeled=shareControl({label:'分享',buttonRole:false,iconControl:true});
+  assert.deepEqual(sharePageFixture([labeled]).run(SHARE_CONVERSATION_SCRIPT),{ok:true});
+  assert.equal(labeled.clicks,1);
+});
+
+test('unknown SVGs and conflicting labels cannot become share actions even with stale markers',()=>{
+  for (const control of [shareControl({label:''}),shareControl({label:'Close',icon:shareIconFixtures[0]}),shareControl({label:'',marked:true}),shareControl({label:'Close',marked:true})]) {
+    const page=sharePageFixture([control]);
+    assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);
+    page.run(COMPACT_CHROME_SCRIPT);
+    assert.equal(control.clicks,0);
+    assert.equal(Object.hasOwn(control.dataset,'dhpSiteShare'),false);
+    assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);
+  }
+});
+
+test('share icons in dialogs or messages are excluded even at the top of the viewport',()=>{
+  for (const options of [{dialog:true},{message:true}]) {
+    for (const label of ['','Share']) {
+      const control=shareControl({...options,label,icon:shareIconFixtures[0]});
+      const page=sharePageFixture([control]);
+      assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);
+      page.run(COMPACT_CHROME_SCRIPT);
+      assert.equal(Object.hasOwn(control.dataset,'dhpSiteShare'),false);
+      assert.equal(control.clicks,0);
+    }
+  }
+});
+
+test('multiple unlabeled share-shaped controls remain ambiguous instead of selecting the rightmost icon',()=>{
+  const controls=shareIconFixtures.map(icon=>shareControl({label:'',icon}));
+  const page=sharePageFixture(controls);
+  assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);
+  page.run(COMPACT_CHROME_SCRIPT);
+  for (const control of controls) {
+    assert.equal(Object.hasOwn(control.dataset,'dhpSiteShare'),false);
+    assert.equal(control.clicks,0);
+  }
+});
+
+test('an aria-disabled roleless share control cannot be activated',()=>{
+  const control=shareControl({label:'',icon:shareIconFixtures[0],buttonRole:false,iconControl:true,ariaDisabled:true});
+  const page=sharePageFixture([control]);
+  page.run(COMPACT_CHROME_SCRIPT);
+  assert.equal(page.run(SHARE_CONVERSATION_SCRIPT).ok,false);
+  assert.equal(control.clicks,0);
 });
 
 test('guest share action invokes the official website control only after it is ready',async()=>{
