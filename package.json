@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-mini-pet",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "DeepSeek Harness 聊天 / 工作双模式与桌面宠物伙伴，内嵌 DeepSeek 官网，支持 Codex v1/v2 图集。",
   "type": "module",
   "main": "./lib/index.js",

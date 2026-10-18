@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.5 — 2026-10-18
+
+- 修复从插件市场安装失败：市场用的是 `dsh plugin add github:…`，pnpm 见仓库里没有 `lib/index.js`，就要求先授权构建脚本，于是每次都报 `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` 装不上。现在把安装时直接加载的 `lib/index.js` 与 `lib/client.js` 一起提交，pnpm 判定“入口已存在、无需构建”，市场安装不再需要放行构建脚本。
+- 没有改用 `prepare` 脚本：pnpm 见到 `prepare` 会无条件构建，反而又回到同一条拒绝。原因写进了 `package.json` 的 `//scripts`。
+- 新增 `npm run release-check`：重建后比对已提交的 `lib/`，避免发版时忘记提交构建、让 git 安装拿到旧代码。发版前请先跑 `npm run build && npm run release-check`。
+
 ## 2.0.4 — 2026-10-18
 
 - 修复官网分享按钮缺失时，右上角其他 SVG 图标被误识别、误隐藏或误点击的问题。无标签入口校验官网已知的分享图形，未知或不唯一的入口显示提示并停止操作。
