@@ -21,6 +21,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import './verify-native-bundle.mjs';
 
 /** The files a git install loads, and therefore the ones committed. */
 const COMMITTED = ['index.js', 'client.js'];

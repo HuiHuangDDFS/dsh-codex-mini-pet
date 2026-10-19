@@ -1,0 +1,9 @@
+{
+  "sourceSha256": "582d31a406ebc127e95907103e033a20d9cd4a556d1098a08b8f43e4fb4585d1",
+  "executableSha256": "68357aa9ef390667f832bd4cfc78fa22dd7694e5cc92b2e9d82bf6982348d0f8",
+  "architectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "minimumOS": "12.0"
+}

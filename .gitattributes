@@ -1,1 +1,3 @@
 lib/*.js text eol=lf
+native/*.swift text eol=lf
+native/macos/*.gz binary
