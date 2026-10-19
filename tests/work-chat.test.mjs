@@ -1,10 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CHAT_PANEL, DEEPSEEK_HOME, chatDestination, chatSession, normalizeChatRows, createWorkChatController } from '../src/work-chat-model.mjs';
+import { CHAT_PANEL, DEEPSEEK_HOME, chatDestination, chatSession, normalizeChatRows, createWorkChatController, newSessionMode, modeSwitchPosition } from '../src/work-chat-model.mjs';
 import { CHAT_NAVIGATION_SCRIPT, createDeepSeekGuest } from '../src/deepseek-guest.mjs';
 import { COMPACT_CHROME_SCRIPT, SHARE_CONVERSATION_SCRIPT } from '../src/deepseek-page.mjs';
 const shareIconFixtures = JSON.parse(readFileSync(new URL('./fixtures/deepseek-share-icons.json', import.meta.url), 'utf8')).icons;
+
+test('mode chooser appears only on a ready new chat or a blank main work session',()=>{
+  const work=(byId,phase='ready',activePanelId=null)=>newSessionMode({activePanelId,sessions:{phase,byId}});
+  assert.equal(work({}),'work');
+  assert.equal(work({},'pending'),null);
+  assert.equal(work({draft:{blank:true,retainedBy:{mainView:1}}}),'work');
+  assert.equal(work({old:{blank:false,retainedBy:{mainView:1}},draft:{blank:true,retainedBy:{mainView:0}}}),null);
+  assert.equal(work({old:{retainedBy:{mainView:1}}}),null);
+  assert.equal(work({},'ready','settings'),null);
+  const chat=url=>newSessionMode({activePanelId:CHAT_PANEL,chat:{url,status:'ready',pendingUrl:null}});
+  for(const url of [DEEPSEEK_HOME,'https://chat.deepseek.com/a/chat','https://chat.deepseek.com/a/chat/'])assert.equal(chat(url),'chat');
+  for(const path of ['/a/chat/s/old','/sign_in','/share/id','/unknown'])assert.equal(chat('https://chat.deepseek.com'+path),null);
+  assert.equal(chat('https://example.com/'),null);
+  assert.equal(newSessionMode({activePanelId:CHAT_PANEL,chat:{url:DEEPSEEK_HOME,status:'loading'}}),null);
+});
+
+test('mode chooser stays hidden during route transitions and follows live website new-session navigation',()=>{
+  const controller=createWorkChatController({selectPanel(){}});
+  const mode=()=>newSessionMode({activePanelId:CHAT_PANEL,chat:controller.getSnapshot()});
+  controller.open(DEEPSEEK_HOME);assert.equal(mode(),null);
+  controller.observe({url:DEEPSEEK_HOME});assert.equal(mode(),'chat');
+  controller.open('/a/chat/s/old');assert.equal(mode(),null);
+  controller.observe({url:DEEPSEEK_HOME});assert.equal(mode(),null);
+  controller.observe({url:'https://chat.deepseek.com/a/chat/s/old'});assert.equal(mode(),null);
+  controller.observe({url:DEEPSEEK_HOME});assert.equal(mode(),'chat');
+  controller.observe({url:'https://chat.deepseek.com/a/chat/s/old'});
+  controller.open(DEEPSEEK_HOME);assert.equal(mode(),null);
+  controller.observe({url:'https://chat.deepseek.com/a/chat/s/old'});assert.equal(mode(),null);
+  controller.observe({url:DEEPSEEK_HOME});assert.equal(mode(),'chat');
+  controller.open('/a/chat/s/old');controller.observe({url:'https://chat.deepseek.com/sign_in'});
+  assert.equal(mode(),null);assert.equal(controller.getSnapshot().pendingUrl,null);
+});
+
+test('shared mode chooser positioning remains centered in the panel after sidebar resizing',()=>{
+  for(const rect of [{x:240,y:40,width:1080,height:800},{x:0,y:40,width:1320,height:800},{x:180,y:70,width:520,height:600}]){
+    const position=modeSwitchPosition(rect);
+    assert.equal(position.left-rect.x,rect.width/2);
+    assert.equal(position.top-rect.y,18);
+    assert.equal(position.maxWidth,rect.width-32);
+  }
+  for(const rect of [null,{x:0,y:0,width:0,height:800},{x:0,y:NaN,width:800,height:600}])assert.equal(modeSwitchPosition(rect),null);
+});
 
 test('chat navigation admits only the official HTTPS origin and history admits only conversation routes', () => {
   for (const url of [null, undefined, '', 'https://evil.example/a/chat/s/123', '//evil.example/', 'javascript:alert(1)', 'http://chat.deepseek.com/', 'https://user:password@chat.deepseek.com/']) assert.equal(chatDestination(url), null);

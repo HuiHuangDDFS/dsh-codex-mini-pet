@@ -1,6 +1,24 @@
 export const CHAT_PANEL = 'dsh-deepseek-chat';
 export const DEEPSEEK_HOME = 'https://chat.deepseek.com/';
 export const CHAT_PARTITION_KEY = 'session:dsh-codex-mini-pet:deepseek-chat';
+export const MODE_SWITCH_LAYOUT = Object.freeze({ width:252, compactWidth:220, height:48, headerHeight:84 });
+
+/** The mode chooser belongs to the new-session landing pages, never an existing conversation. */
+export function newSessionMode({ activePanelId, sessions, chat }) {
+  if (activePanelId === CHAT_PANEL) {
+    if (chat?.status !== 'ready' || chat.pendingUrl) return null;
+    const destination = chatDestination(chat.url);
+    return destination && /^\/(?:a\/[a-zA-Z0-9_-]+\/?)?$/.test(new URL(destination).pathname) ? 'chat' : null;
+  }
+  if (activePanelId !== null) return null;
+  const current = Object.values(sessions?.byId || {}).find(row => (row.retainedBy?.mainView || 0) > 0);
+  return (current ? current.blank === true : sessions?.phase === 'ready') ? 'work' : null;
+}
+
+export function modeSwitchPosition(rect) {
+  if (!rect || ![rect.x,rect.y,rect.width,rect.height].every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) return null;
+  return { left:rect.x + rect.width/2, top:rect.y + (MODE_SWITCH_LAYOUT.headerHeight-MODE_SWITCH_LAYOUT.height)/2, maxWidth:Math.max(0,rect.width-32) };
+}
 
 export function chatDestination(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 8192) return null;
@@ -29,7 +47,7 @@ export function normalizeChatRows(rows) {
   return [...result.values()];
 }
 export function createWorkChatController(layout) {
-  let state = { opened: false, request: null, rows: [], url: DEEPSEEK_HOME, title: 'DeepSeek', status: 'idle', error: '', revision: 0 };
+  let state = { opened: false, request: null, pendingUrl:null, rows: [], url: DEEPSEEK_HOME, title: 'DeepSeek', status: 'idle', error: '', revision: 0 };
   const listeners = new Set();
   const set = patch => { if (Object.entries(patch).every(([key,value])=>state[key]===value)) return; state = { ...state, ...patch }; for (const listener of listeners) listener(); };
   return {
@@ -39,7 +57,7 @@ export function createWorkChatController(layout) {
       const destination = chatDestination(url ?? state.url);
       if (!destination) throw new Error('只能打开 DeepSeek 官方聊天页面。');
       // Returning to Chat must preserve the live page, including an unsent draft.
-      if (!state.opened || url !== undefined) set({ opened: true, request: { url: destination, revision: state.revision + 1 }, revision: state.revision + 1 });
+      if (!state.opened || url !== undefined) set({ opened: true, request: { url: destination, revision: state.revision + 1 }, pendingUrl:destination, revision: state.revision + 1 });
       layout.selectPanel(CHAT_PANEL);
     },
     work() { layout.selectPanel(null); },
@@ -48,7 +66,7 @@ export function createWorkChatController(layout) {
       const url = chatDestination(snapshot?.url);
       if (!url) return;
       if (/^\/(sign_in|sign_up|forgot_password|mobile_verification)(\/|$)/.test(new URL(url).pathname)) {
-        set({ url, rows: [], title: 'DeepSeek', status: 'sign-in', error: '' }); return;
+        set({ url, pendingUrl:null, rows: [], title: 'DeepSeek', status: 'sign-in', error: '' }); return;
       }
       // A route transition may briefly unmount the site's navigation. Keep the
       // mirrored list until its sidebar returns; an explicitly empty sidebar clears it.
@@ -57,7 +75,8 @@ export function createWorkChatController(layout) {
       const current = chatSession(url);
       const title = rows.find(row => row.id === current?.id)?.title || String(snapshot.title || 'DeepSeek').slice(0, 160);
       // Only live webpage navigation labels are mirrored; no cookies, tokens or message bodies.
-      set({ url, title, rows, status: 'ready', error: '' });
+      const pendingUrl = state.pendingUrl && new URL(state.pendingUrl).pathname.replace(/\/$/,'') !== new URL(url).pathname.replace(/\/$/,'') ? state.pendingUrl : null;
+      set({ url, pendingUrl, title, rows, status: 'ready', error: '' });
     },
   };
 }
