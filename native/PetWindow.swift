@@ -78,7 +78,7 @@ class Companion: NSObject, NSWindowDelegate {
     var prefs: [String: Any] = [:], context: [String: Any] = [:], messages: [String: String] = [:]
     var name = "deepseek", label = "", mini = false, dragging = false, hover = false
     var chat: CompanionPanel!, activity: CompanionPanel!, bubble: CompanionPanel!
-    let workspace = NSPopUpButton(), session = NSPopUpButton()
+    let workspace = NSPopUpButton(frame: .zero, pullsDown: false), session = NSPopUpButton(frame: .zero, pullsDown: false)
     let prompt = NSTextView(), feedback = NSTextField(labelWithString: "")
     let activities = NSStackView(), activityScroll = NSScrollView()
     var chatButton: ActionButton!, activityButton: ActionButton!, settingsButton: ActionButton!
@@ -164,7 +164,7 @@ class Companion: NSObject, NSWindowDelegate {
     }
     func submit(edit: Bool) {
         guard !sending, let wid = workspace.selectedItem?.representedObject as? String, !wid.isEmpty else {
-            feedback.stringValue = t("请先选择工作区。"); return
+            feedback.stringValue = t("请选择工作区"); return
         }
         if !edit && prompt.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
         var event: [String: Any] = ["type": edit ? "edit-chat" : "send-chat", "text": prompt.string, "workspaceId": wid]
@@ -199,7 +199,7 @@ class Companion: NSObject, NSWindowDelegate {
     func populateSessions() {
         let previous = session.selectedItem?.representedObject as? String
         let wid = workspace.selectedItem?.representedObject as? String ?? ""
-        session.removeAllItems(); session.addItem(withTitle: t("新会话")); session.lastItem?.representedObject = ""
+        session.removeAllItems(); session.addItem(withTitle: t("+ 新会话")); session.lastItem?.representedObject = ""
         for row in rows(context, "sessions") where string(row, "workspaceId") == wid {
             session.addItem(withTitle: string(row, "title", t("未命名会话")))
             session.lastItem?.representedObject = string(row, "sessionId")
@@ -208,7 +208,7 @@ class Companion: NSObject, NSWindowDelegate {
     }
     func populateActivity(_ incoming: [[String: Any]]) {
         for view in activities.arrangedSubviews { activities.removeArrangedSubview(view); view.removeFromSuperview() }
-        if incoming.isEmpty { activities.addArrangedSubview(NSTextField(labelWithString: t("暂无动态"))) }
+        if incoming.isEmpty { activities.addArrangedSubview(NSTextField(labelWithString: t("暂无任务动态"))) }
         for row in incoming {
             let button = ActionButton(string(row, "title") + " · " + t(string(row, "label"))) { [weak self] in
                 self?.openHost(["type": "open-session", "sessionId": string(row, "id")])
@@ -292,7 +292,7 @@ class Companion: NSObject, NSWindowDelegate {
             guard [1, 2].contains(scale), cg.width == 1536*scale, [9*208*scale, 11*208*scale].contains(cg.height) else { return }
             var next: [NSImage] = []
             for row in 0..<(cg.height/(208*scale)) { for column in 0..<8 {
-                guard let crop = cg.cropping(to: CGRect(x: column*192*scale, y: row*208*scale, width: 192*scale, height: 208*scale)) else { return }
+                guard let crop = cg.cropping(to: CGRect(x: CGFloat(column*192*scale), y: CGFloat(row*208*scale), width: CGFloat(192*scale), height: CGFloat(208*scale))) else { return }
                 next.append(NSImage(cgImage: crop, size: NSSize(width: 192, height: 208)))
             } }
             frames = next; drawFrame()
@@ -336,11 +336,21 @@ class Companion: NSObject, NSWindowDelegate {
         case "reply":
             sending = false; sendButton.isEnabled = true; editButton.isEnabled = true
             if message["ok"] as? Bool == true {
-                feedback.stringValue = t("已发送")
+                feedback.stringValue = t(string(message, "kind") == "edit-chat" ? "已转入主会话草稿，由你发送" : "已发送到 Harness")
                 if string(message, "kind") == "send-chat" { prompt.string = "" }
                 if string(message, "kind") == "edit-chat" { chat.orderOut(nil) }
-            } else { feedback.stringValue = string(message, "error", t("发送失败")) }
+            } else { feedback.stringValue = string(message, "error", t("发送失败，请在主会话中重试。")) }
         case "inspect" where ProcessInfo.processInfo.environment["DSH_PET_NATIVE_TEST"] == "1":
+            if message["capture"] as? Bool == true, let output = ProcessInfo.processInfo.environment["DSH_PET_NATIVE_TEST_OUTPUT"] {
+                for (name, panel) in [("pet", pet), ("chat", chat!)] {
+                    if let view = panel.contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                        view.cacheDisplay(in: view.bounds, to: bitmap)
+                        if let data = bitmap.representation(using: .png, properties: [:]) {
+                            try? data.write(to: URL(fileURLWithPath: output).appendingPathComponent("macos-\(name).png"))
+                        }
+                    }
+                }
+            }
             let rect = pet.frame
             emit(["type": "inspection", "visible": pet.isVisible, "floating": pet.level == .floating, "frameCount": frames.count,
                   "frameRow": frameRow, "frameColumn": frameColumn, "mini": mini, "chatOpen": chat.isVisible,

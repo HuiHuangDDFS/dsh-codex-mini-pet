@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import sharp from 'sharp';
+import { readFile } from 'node:fs/promises';
 import { macOSExecutable } from '../src/macos-companion.mjs';
 
 if (process.platform !== 'darwin') throw new Error('Run this integration check on macOS.');
 const executable = macOSExecutable();
-const child = spawn(executable, [], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, DSH_PET_NATIVE_TEST: '1', DSH_PET_OWNER_PID: String(process.pid) } });
+const child = spawn(executable, [], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, DSH_PET_NATIVE_TEST: '1', DSH_PET_OWNER_PID: String(process.pid), DSH_PET_NATIVE_TEST_OUTPUT:'work/macos' } });
 let buffer = '', diagnostics = '', pending = [], queued = [];
 const closed = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', (code, signal) => code === 0 ? resolve() : reject(new Error(`Native exit ${code}/${signal}: ${diagnostics}`))); });
 // Retain a rejection handler even if startup fails before we await exit.
@@ -54,6 +55,9 @@ try {
   send({ ...state, preferences:{...preferences,mode:'mini'} }); assert.equal((await inspect()).mini,true);
   send({ ...state, preferences:{...preferences,surface:'app'} }); assert.equal((await inspect()).visible,false);
   send(state); assert.equal((await inspect()).visible,true);
+  send({ type:'atlas', base64:(await readFile('assets/pets/deepseek/spritesheet-2x.png')).toString('base64') });
+  send({ type:'frame', row:0, column:0 }); send({ type:'toggle-chat' });
+  send({ type:'inspect', capture:true }); await wait('inspection');
   child.stdin.end(); await closed;
   console.log('macOS native smoke passed: atlas crops, floating window, context, panel toggling/following, mini mode, fallback and EOF shutdown.');
 } finally { clearTimeout(timeout); if (child.exitCode === null) child.kill(); }

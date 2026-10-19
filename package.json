@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-mini-pet",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "DeepSeek Harness 聊天 / 工作双模式与桌面宠物伙伴，内嵌 DeepSeek 官网，支持 Codex v1/v2 图集。",
   "type": "module",
   "main": "./lib/index.js",
@@ -34,7 +34,9 @@
     "preview": "node src/preview.mjs",
     "test:native": "node scripts/verify-native-windows.mjs",
     "prepack": "npm run build",
-    "release-check": "node scripts/verify-committed-lib.mjs"
+    "release-check": "node scripts/verify-committed-lib.mjs",
+    "build:macos": "node scripts/build-native-macos.mjs",
+    "test:macos": "node scripts/verify-native-macos.mjs"
   },
   "//scripts": {
     "build-on-install": "There is deliberately NO `prepare` script. pnpm builds a git dependency when it sees `prepare`, and then requires that build to be allowed through `allowBuilds`; `dsh plugin add github:<owner>/<repo>` (what the plugin market runs) does not grant that, so a `prepare` here would make every git install fail with ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED. Without `prepare`, pnpm keeps a build only when the declared entry file is missing (packageShouldBeBuilt), so committing `lib/` makes git installs work as-is. Rebuild and commit `lib/` before tagging a release — CI's `npm pack --dry-run` does not check that the committed build matches `src/`, so the release check below does."

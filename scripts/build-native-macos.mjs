@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 if (process.platform !== 'darwin') throw new Error('Build this AppKit companion on macOS.');
 await mkdir('work/macos', { recursive: true });
@@ -12,4 +13,7 @@ execFileSync('lipo', ['-create', 'work/macos/pet-arm64', 'work/macos/pet-x86_64'
 execFileSync('codesign', ['--force', '--sign', '-', 'work/macos/pet-window'], { stdio: 'inherit' });
 execFileSync('codesign', ['--verify', '--strict', 'work/macos/pet-window'], { stdio: 'inherit' });
 execFileSync('lipo', ['-info', 'work/macos/pet-window'], { stdio: 'inherit' });
-await writeFile('native/macos/pet-window.gz', gzipSync(await readFile('work/macos/pet-window'), { level: 9 }));
+const binary = await readFile('work/macos/pet-window');
+await writeFile('native/macos/pet-window.gz', gzipSync(binary, { level: 9 }));
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+await writeFile('native/macos/build.json', JSON.stringify({ sourceSha256:sha(await readFile('native/PetWindow.swift')), executableSha256:sha(binary), architectures:['arm64','x86_64'], minimumOS:'12.0' }, null, 2)+'\n');

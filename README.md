@@ -13,9 +13,9 @@
 [![代码许可](https://img.shields.io/badge/code-MIT-263146?style=flat-square)](LICENSE)
 [![验证](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/actions/workflows/verify.yml)
 ![适配版本](https://img.shields.io/badge/dsh-0.2.1--rc.2-2f6f4f?style=flat-square)
-![桌面置顶](https://img.shields.io/badge/desktop-Windows-4b6fff?style=flat-square)
+![桌面置顶](https://img.shields.io/badge/desktop-Windows%20%7C%20macOS-4b6fff?style=flat-square)
 
-> **v2.0.6：聊天、项目工作与桌面伙伴，在一个 Harness 里自然衔接。**
+> **v2.0.7：聊天、项目工作与桌面伙伴，在一个 Harness 里自然衔接。**
 >
 > 聊天连接 DeepSeek 官方网页，工作继续使用 Harness 原生的工作区、会话、模型与工具。
 > 本版修复分享入口误识别：无标签按钮校验官网分享图形，找不到时停止操作；保留高清默认伙伴 `deepseek`、桌面快捷聊天、任务动态与完成提醒。
@@ -24,9 +24,9 @@
 
 [下载最新版](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) · [功能亮点](#亮点) · [界面预览](#你会看到什么) · [安装](#安装) · [使用说明](#使用说明) · [常见问题](#常见问题)
 
-**30 秒了解：**聊天连接 DeepSeek 官方网页，工作使用 Harness 原生会话与工具；Windows 桌面版还可把伙伴置顶到桌面，查看任务动态。
+**30 秒了解：**聊天连接 DeepSeek 官方网页，工作使用 Harness 原生会话与工具；Windows / macOS 桌面版还可把伙伴置顶到桌面，查看任务动态。
 
-[立即下载 v2.0.6](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) · [查看安装步骤](#安装) · [遇到问题或有建议？提交 Issue](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/issues)
+[立即下载 v2.0.7](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest) · [查看安装步骤](#安装) · [遇到问题或有建议？提交 Issue](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/issues)
 
 </div>
 
@@ -40,7 +40,7 @@
 
 - **中文默认，也可用英语**——在「外观与行为 → 语言」中切换，设置页与桌面聊天即时更新，草稿和会话选择保留。
 
-- **Harness 在后台，伙伴也在桌面上**——Windows 桌面版使用独立透明置顶窗口，主窗口最小化后仍可见；完全退出 Harness 时一起关闭。
+- **Harness 在后台，伙伴也在桌面上**——Windows / macOS 桌面版使用独立透明置顶窗口，主窗口最小化后仍可见；完全退出 Harness 时一起关闭。
 - **三个内置伙伴**——新增基于设定图生成的蓝发鲸鱼女仆风 Q 版 `deepseek`，使用重绘后的 2 倍高清图集，保留「深蓝鲸娘」和「智域」。新安装默认选择 `deepseek`，升级保留已有选择。
 - **会跑、会打招呼，也会看向鼠标**——支持九类动作与十六方向注视；左右拖动时播放对应方向的跑步动画，松开后恢复任务状态。
 - **靠近时展开**——鼠标接近伙伴后柔和显示「聊一聊」和「动态」，离开后延迟收起；打开面板时保留操作栏，精简模式始终保留入口。
@@ -105,11 +105,11 @@
 
 ## 安装
 
-当前版本为 **2.0.6**，已在 DeepSeek Harness **0.2.1-rc.2** 上验证可用。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows；Web 及其他系统使用应用内伙伴。
+当前版本为 **2.0.7**，已在 DeepSeek Harness **0.2.1-rc.2** 上验证可用。官网聊天需要桌面宿主的内嵌浏览器能力，已在 Windows 桌面版验证。独立桌面置顶伙伴适用于 Windows 与 macOS 12+（Apple 芯片 / Intel 通用程序，无需 Xcode）；macOS 为首次适配，已做构建与原生窗口自动化验证，尚待实机交互验证。Web 及其他系统使用应用内伙伴。
 
 ### 1. 获取安装包
 
-打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.6.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.6/dsh-codex-mini-pet-2.0.6.tgz)。发布包已包含构建结果，直接安装即可。
+打开 [最新 Release](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/latest)，在 **Assets** 下载 [`dsh-codex-mini-pet-2.0.7.tgz`](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/releases/download/v2.0.7/dsh-codex-mini-pet-2.0.7.tgz)。发布包已包含构建结果，直接安装即可。
 
 也可以从源码构建，需要 **Node.js 22.19+** 和 npm：
 
@@ -121,7 +121,7 @@ npm run build
 npm pack
 ```
 
-仓库根目录会生成 `dsh-codex-mini-pet-2.0.6.tgz`。固定版本源码可从 [v2.0.6 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.6) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
+仓库根目录会生成 `dsh-codex-mini-pet-2.0.7.tgz`。固定版本源码可从 [v2.0.7 标签](https://github.com/HuiHuangDDFS/dsh-codex-mini-pet/tree/v2.0.7) 获取；GitHub 自动生成的 Source code ZIP 仍需构建。
 
 ### 2. 安装到 Harness
 
@@ -133,7 +133,7 @@ npm pack
 
 ```powershell
 $harnessDir = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness'
-$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.6.tgz).Path
+$petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.7.tgz).Path
 & "$harnessDir\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $petPackage
 ```
 
@@ -142,7 +142,7 @@ $petPackage = (Resolve-Path .\dsh-codex-mini-pet-2.0.6.tgz).Path
 **纯 Web profile**
 
 ```sh
-dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.6.tgz
+dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.7.tgz
 ```
 
 将 `web` 替换成实际使用的 profile 名称，安装后重新启动相应的 Harness 服务。升级时按相同步骤安装新版 `.tgz`，已有宠物库和偏好保留。
@@ -174,7 +174,7 @@ dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.6.tgz
 
 ### 聊一聊
 
-点击底栏「聊一聊」，或在 Windows 桌面置顶模式下按 **Ctrl+Alt+Shift+P**。
+点击底栏「聊一聊」，或使用桌面模式快捷键：Windows **Ctrl+Alt+Shift+P**，macOS **⌘⌥⇧P**。
 
 - 桌面快捷聊天可直接选择工作区及其未归档会话，也可新建会话；默认使用 Harness 当前会话所在工作区。使用前请在 Harness 添加工作区并配置可用模型。
 - 应用内聊天栏还可选择工作区或已有会话作为发送目标。
@@ -227,11 +227,11 @@ dsh plugin --profile web add /绝对路径/dsh-codex-mini-pet-2.0.6.tgz
 
 **最小化后宠物不见了？**
 
-独立置顶窗口仅在 Windows 桌面宿主中启用。确认「外观与行为 → 桌面置顶」和「显示伙伴」均已开启；桌面窗口启动失败时会回到应用内显示。完全退出 Harness 后伙伴关闭是正常行为。
+独立置顶窗口在 Windows 和 macOS 12+ 桌面宿主中启用。确认「外观与行为 → 桌面置顶」和「显示伙伴」均已开启；桌面窗口启动失败时会回到应用内显示。完全退出 Harness 后伙伴关闭是正常行为。
 
 **快捷键没有反应？**
 
-Windows 桌面置顶模式使用固定全局 Ctrl+Alt+Shift+P，其他软件占用该组合时可直接点击底栏。应用内快捷键可在 Harness 快捷键设置中调整，默认按键冲突不会阻止插件启动。
+桌面置顶模式使用全局快捷键：Windows 为 Ctrl+Alt+Shift+P，macOS 为 ⌘⌥⇧P；被其他软件占用时可直接点击底栏。应用内快捷键可在 Harness 快捷键设置中调整，默认按键冲突不会阻止插件启动。
 
 **聊天提示先选择工作区，或发送失败？**
 
@@ -247,7 +247,7 @@ Windows 桌面置顶模式使用固定全局 Ctrl+Alt+Shift+P，其他软件占�
 
 **支持 macOS / Linux 的独立桌面宠物吗？**
 
-独立置顶窗口使用 Windows 自带 WPF；其他平台提供应用内显示。实时双向语音、Codex 云端宠物服务、透明像素点击穿透和多显示器吸附尚未实现；多屏混合 DPI 尚未实机验证。
+Windows 独立置顶窗口使用系统自带 WPF；macOS 使用 AppKit 透明置顶窗口，首次启动解压插件自带的通用程序至用户缓存目录。macOS 版本目前未进行 Apple 开发者签名及公证；若系统策略阻止启动，会自动回到应用内显示。其他平台提供应用内显示。实时双向语音、Codex 云端宠物服务、透明像素点击穿透和多显示器吸附尚未实现；多屏混合 DPI 尚未实机验证。
 
 ## 数据与隐私
 

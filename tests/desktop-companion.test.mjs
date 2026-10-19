@@ -8,19 +8,47 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { DesktopCompanion, isWindowsDesktopHost } from '../src/desktop-companion.mjs';
+import { DesktopCompanion, isWindowsDesktopHost, isDesktopHost } from '../src/desktop-companion.mjs';
+import { macOSExecutable } from '../src/macos-companion.mjs';
+import { gzipSync } from 'node:zlib';
 import { PetStore } from '../src/store.mjs';
 import { desktopPng } from '../src/atlas.mjs';
 
 const host = 'K:/app/resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js';
-test('only Windows desktop hosts launch a native companion; launch failure stays optional', () => {
+test('only supported desktop hosts launch a native companion; launch failure stays optional', () => {
   assert.equal(isWindowsDesktopHost('win32', [host]), true);
   assert.equal(isWindowsDesktopHost('linux', [host]), false);
   assert.equal(isWindowsDesktopHost('win32', ['dsh-desktop-host/lib/cli.js']), false);
+  assert.equal(isDesktopHost('darwin', ['/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js']), true);
+  assert.equal(isDesktopHost('linux', [host]), false);
+  assert.equal(isDesktopHost('darwin', ['dsh-desktop-host/lib/cli.js']), false);
+  assert.equal(isDesktopHost('darwin', ['server.mjs']), false);
   const d = new DesktopCompanion({}, { enabled: true, spawnImpl() { throw new Error('blocked'); } });
   assert.doesNotThrow(() => d.start());
   assert.deepEqual(d.status(), { supported: true, active: false, error: 'blocked', hotkey: false });
   d.dispose();
+});
+
+test('macOS launches the bundled helper over private pipes and falls back if extraction fails',()=>{
+  const child=Object.assign(new EventEmitter(),{stdin:new PassThrough(),stdout:new PassThrough(),stderr:new PassThrough(),kill(){}});
+  let launch;
+  const d=new DesktopCompanion({},{enabled:true,platform:'darwin',ownerPid:123,macExecutable:()=>'/cache with spaces/pet-window',spawnImpl(...args){launch=args;return child;}});
+  d.start();
+  assert.equal(launch[0],'/cache with spaces/pet-window'); assert.deepEqual(launch[1],[]);
+  assert.deepEqual(launch[2].stdio,['pipe','pipe','pipe']); assert.equal(launch[2].env.DSH_PET_OWNER_PID,'123');
+  d.dispose(); child.emit('exit',0);
+  const broken=new DesktopCompanion({},{enabled:true,platform:'darwin',macExecutable(){throw new Error('missing macOS bundle');},spawnImpl(){assert.fail('must not launch');}});
+  broken.start(); assert.equal(broken.status().active,false); assert.match(broken.status().error,/missing macOS bundle/); broken.dispose();
+});
+
+test('macOS extraction uses a content-addressed private cache and repairs modified executables',()=>{
+  const binary=Buffer.from('test-universal-executable'), files=new Map(), writes=[], modes=[];
+  const deps={home:'/Users/test',read(file){if(file instanceof URL)return gzipSync(binary);if(!files.has(file))throw Error('not found');return files.get(file);},mkdir(){},write(file,data,options){files.set(file,data);writes.push(options.mode);},rename(from,to){files.set(to,files.get(from));files.delete(from);},chmod(file,mode){modes.push(mode);}};
+  const target=macOSExecutable(deps); assert.match(target,/Library[\\/]Caches[\\/]dsh-codex-mini-pet[\\/][a-f0-9]{64}[\\/]pet-window$/);
+  assert.deepEqual(files.get(target),binary); assert.deepEqual(writes,[0o700]);
+  assert.equal(macOSExecutable(deps),target); assert.equal(writes.length,1,'same package must reuse cached binary');
+  files.set(target,Buffer.from('modified')); macOSExecutable(deps); assert.equal(writes.length,2); assert.deepEqual(files.get(target),binary);
+  assert.ok(modes.every(mode=>mode===0o700));
 });
 test('private child lifecycle, event bounds, commands and replies remain controlled', async () => {
   const child = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), kill() {} });
