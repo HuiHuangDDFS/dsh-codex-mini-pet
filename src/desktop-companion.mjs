@@ -4,16 +4,21 @@ import { fileURLToPath } from 'node:url';
 import { frameFor } from './client-model.mjs';
 import { desktopPng } from './atlas.mjs';
 import { ENGLISH_MESSAGES } from './i18n.mjs';
+import { macOSExecutable } from './macos-companion.mjs';
 
 export function isWindowsDesktopHost(platform = process.platform, argv = process.argv) {
   return platform === 'win32' && argv.some(value => /dsh-desktop-host[\\/]lib[\\/]index\.js$/.test(value));
+}
+export function isDesktopHost(platform = process.platform, argv = process.argv) {
+  return ['win32', 'darwin'].includes(platform) && argv.some(value => /dsh-desktop-host[\\/]lib[\\/]index\.js$/.test(value));
 }
 const launchCode = `Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase,System.Xaml,System.Web.Extensions,System.Windows.Forms,System.Drawing; $refs=@('System.dll','System.Core.dll',[System.Windows.Application].Assembly.Location,[System.Windows.Media.ImageSource].Assembly.Location,[System.Windows.DependencyObject].Assembly.Location,[System.Xaml.XamlReader].Assembly.Location,[System.Web.Script.Serialization.JavaScriptSerializer].Assembly.Location,[System.Windows.Forms.Screen].Assembly.Location,[System.Drawing.Point].Assembly.Location); Add-Type -Path $env:DSH_PET_NATIVE_SOURCE -ReferencedAssemblies $refs; [DshPet.NativeApp]::Run()`;
 
 /** A private stdin/stdout channel; there is no additional HTTP listener or credential file. */
 export class DesktopCompanion {
-  constructor(store, { enabled = isWindowsDesktopHost(), spawnImpl = spawn, ownerPid = process.ppid } = {}) {
+  constructor(store, { platform = process.platform, enabled = isDesktopHost(platform), spawnImpl = spawn, ownerPid = process.ppid, macExecutable = macOSExecutable } = {}) {
     this.store = store; this.supported = enabled; this.spawnImpl = spawnImpl; this.ownerPid = ownerPid;
+    this.platform = platform; this.macExecutable = macExecutable;
     this.active = false; this.error = null; this.events = []; this.facts = {}; this.sequence = 0;
     this.started = Date.now(); this.animation = 'idle'; this.gaze = null; this.closed = false;
   }
@@ -21,8 +26,9 @@ export class DesktopCompanion {
   start() {
     if (!this.supported || this.child || this.closed) return;
     try {
-      const exe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-      this.child = this.spawnImpl(exe, ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-WindowStyle', 'Hidden', '-Command', launchCode], {
+      const mac = this.platform === 'darwin';
+      const exe = mac ? this.macExecutable() : path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+      this.child = this.spawnImpl(exe, mac ? [] : ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-WindowStyle', 'Hidden', '-Command', launchCode], {
         windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, DSH_PET_NATIVE_SOURCE: fileURLToPath(new URL('../native/PetWindow.cs', import.meta.url)), DSH_PET_OWNER_PID: String(this.ownerPid) },
       });
