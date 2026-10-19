@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
 import { macOSExecutable } from '../src/macos-companion.mjs';
+import { ENGLISH_MESSAGES } from '../src/i18n.mjs';
 
 if (process.platform !== 'darwin') throw new Error('Run this integration check on macOS.');
 const executable = macOSExecutable();
@@ -35,7 +36,7 @@ try {
   await wait('ready');
   const preferences = { surface: 'desktop', visible: true, mode: 'pet', scale: .72, language: 'en', reducedMotion: true };
   const context = { workspaces: [{ workspaceId: 'w', title: 'Workspace' }], sessions: [{ workspaceId: 'w', sessionId: 's', title: 'Session' }], currentWorkspaceId: 'w' };
-  const state = { type: 'state', preferences, context, rows: [], name: 'deepseek', messages: {} };
+  const state = { type: 'state', preferences, context, rows: [], name: 'deepseek', messages: ENGLISH_MESSAGES };
   send(state);
   assert.equal((await inspect()).visible, true);
   // Test complete v1/v2, 1x/2x atlases using actual AppKit decoding/cropping.

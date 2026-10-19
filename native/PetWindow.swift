@@ -14,6 +14,9 @@ func number(_ dict: [String: Any], _ key: String, _ fallback: Double = 0) -> Dou
 func rows(_ dict: [String: Any], _ key: String) -> [[String: Any]] { dict[key] as? [[String: Any]] ?? [] }
 
 class FlippedView: NSView { override var isFlipped: Bool { true } }
+class SurfaceView: FlippedView {
+    override func draw(_ dirtyRect: NSRect) { NSColor.windowBackgroundColor.setFill(); bounds.fill() }
+}
 class CompanionPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -123,7 +126,7 @@ class Companion: NSObject, NSWindowDelegate {
     func makePanel(width: CGFloat, height: CGFloat) -> CompanionPanel {
         let panel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: [.titled, .utilityWindow, .nonactivatingPanel], backing: .buffered, defer: false)
         configure(panel); panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
-        panel.contentView = FlippedView(); panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.contentView = SurfaceView(); panel.standardWindowButton(.closeButton)?.isHidden = true
         return panel
     }
     func t(_ text: String) -> String { string(prefs, "language") == "en" ? messages[text] ?? text : text }
