@@ -86,6 +86,7 @@ class Companion: NSObject, NSWindowDelegate {
     var heading = NSTextField(labelWithString: ""), bubbleButton: ActionButton!
     var storedPosition: String?, contextKey = "", activityKey = "", seen = Set<String>()
     var completionID = "", bubbleUntil: Double = 0, sending = false
+    var pendingKind = "", pendingSince = Date.distantPast
     var hotKey: EventHotKeyRef?, hotKeyHandler: EventHandlerRef?, timer: Timer?
     var ownerPID = pid_t(Int32(ProcessInfo.processInfo.environment["DSH_PET_OWNER_PID"] ?? "0") ?? 0)
 
@@ -169,7 +170,9 @@ class Companion: NSObject, NSWindowDelegate {
         if !edit && prompt.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
         var event: [String: Any] = ["type": edit ? "edit-chat" : "send-chat", "text": prompt.string, "workspaceId": wid]
         if let sid = session.selectedItem?.representedObject as? String, !sid.isEmpty { event["sessionId"] = sid }
-        sending = true; sendButton.isEnabled = false; editButton.isEnabled = false; feedback.stringValue = t("正在发送…")
+        sending = true; pendingKind = edit ? "edit-chat" : "send-chat"; pendingSince = Date()
+        sendButton.isEnabled = false; editButton.isEnabled = false; workspace.isEnabled = false; session.isEnabled = false
+        feedback.stringValue = t("正在发送…")
         if edit { openHost(event) } else { emit(event) }
     }
     func toggleChat() {
@@ -269,6 +272,9 @@ class Companion: NSObject, NSWindowDelegate {
     func tick() {
         if ownerPID > 1 && kill(ownerPID, 0) != 0 && errno == ESRCH { NSApp.terminate(nil); return }
         updateHover()
+        if sending && Date().timeIntervalSince(pendingSince) > 25 {
+            finishSending(); feedback.stringValue = t("Harness 暂未响应，请打开主窗口检查。")
+        }
         if bubble.isVisible && Date().timeIntervalSince1970*1000 > bubbleUntil { bubble.orderOut(nil) }
         guard pet.isVisible, !dragging, prefs["followPointer"] as? Bool != false else { return }
         let point = NSEvent.mouseLocation, center = NSPoint(x: pet.frame.midX, y: pet.frame.midY)
@@ -334,7 +340,8 @@ class Companion: NSObject, NSWindowDelegate {
             if seen.count > 1000 { seen = Set(rows(message, "completions").map { string($0, "id") }) }
         case "toggle-chat": toggleChat()
         case "reply":
-            sending = false; sendButton.isEnabled = true; editButton.isEnabled = true
+            guard string(message, "kind") == pendingKind else { return }
+            finishSending()
             if message["ok"] as? Bool == true {
                 feedback.stringValue = t(string(message, "kind") == "edit-chat" ? "已转入主会话草稿，由你发送" : "已发送到 Harness")
                 if string(message, "kind") == "send-chat" { prompt.string = "" }
@@ -362,6 +369,10 @@ class Companion: NSObject, NSWindowDelegate {
     func drawFrame() {
         guard (0..<8).contains(frameColumn), frameRow >= 0, frameRow < frames.count/8 else { return }
         spriteView.sprite = frames[frameRow*8+frameColumn]; spriteView.needsDisplay = true
+    }
+    func finishSending() {
+        sending = false; pendingKind = ""; sendButton.isEnabled = true; editButton.isEnabled = true
+        workspace.isEnabled = true; session.isEnabled = true
     }
 }
 
